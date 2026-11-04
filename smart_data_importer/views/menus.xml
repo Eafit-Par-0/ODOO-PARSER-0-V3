@@ -31,6 +31,19 @@
               action="action_import_cleansing_rule"
               sequence="10"/>
 
+    <menuitem id="menu_smart_importer_value_memory"
+              name="Memoria de valores"
+              parent="menu_smart_importer_config"
+              action="action_import_value_memory"
+              groups="smart_data_importer.group_smart_importer_admin"
+              sequence="30"/>
+
+    <menuitem id="menu_smart_importer_header_memory"
+              name="Sinónimos y memoria de encabezados"
+              parent="menu_smart_importer_config"
+              action="action_mapping_registry"
+              sequence="40"/>
+
     <menuitem id="menu_smart_importer_settings"
               name="Settings"
               parent="menu_smart_importer_config"

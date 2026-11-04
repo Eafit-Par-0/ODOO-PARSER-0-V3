@@ -38,7 +38,7 @@ class ImportJob(models.Model):
         try:
             model_name = session.target_model_id.model
             Model = self.env[model_name]
-            converter = ValueConverter(self.env, model_name)
+            converter = ValueConverter(self.env, model_name, overrides=session._value_overrides())
 
             df = session._read_file()['df']
             chunk_df = df.iloc[self.row_from:self.row_to]

@@ -39,8 +39,12 @@ class ImportColumnMapping(models.Model):
         ('hash', 'Hash'),
         ('fuzzy', 'Fuzzy'),
         ('llm', 'LLM'),
+        ('memory', 'Memory'),
         ('manual', 'Manual')
     ], string='Source')
+    suggested_field_id = fields.Many2one(
+        'ir.model.fields', string='Initially suggested field', ondelete='set null', readonly=True,
+        help="Field proposed when the mapping was created. If the user changes it, the change is learned.")
 
     required_level = fields.Selection(REQUIRED_LEVELS, string='Required',
                                       help="Read from the header colour of the base template.")
@@ -49,6 +53,9 @@ class ImportColumnMapping(models.Model):
     is_ignored = fields.Boolean(string='Ignore', default=False)
     is_conflict = fields.Boolean(string='Conflict', help="Target field is assigned to multiple columns", default=False)
     cleansing_rule_ids = fields.Many2many('import.cleansing.rule', string='Cleansing Rules')
+    value_issue_overflow = fields.Boolean(
+        string='Too many unknown values', readonly=True,
+        help="The column has too many values unknown to Odoo; it is probably mapped to the wrong field.")
 
     @api.onchange('target_field_id')
     def _onchange_target_field_id(self):

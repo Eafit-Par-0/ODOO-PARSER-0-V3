@@ -25,18 +25,19 @@ class HashMapper:
         for reg in registry_records:
             norm_syn = FileReader.normalize_header(reg.synonym)
             if norm_syn not in lookup:  # first one wins = highest priority
-                lookup[norm_syn] = reg.field_id.id
+                lookup[norm_syn] = (reg.field_id.id, 'memory' if reg.origin == 'learned' else 'hash')
 
         for header in headers:
             if header in results:
                 continue
             norm_header = FileReader.normalize_header(header)
             if norm_header in lookup:
+                field_id, source = lookup[norm_header]
                 results[header] = {
-                    'target_field_id': lookup[norm_header],
+                    'target_field_id': field_id,
                     'target_subfield': False,
                     'confidence': 1.0,
-                    'source': 'hash',
+                    'source': source,
                 }
 
         return results

@@ -74,6 +74,20 @@
                         Hay <field name="required_missing_count" class="fw-bold"/> celdas vacías en columnas marcadas como obligatorias en la plantilla.
                         Revisa la columna "Vacías" en el mapeo.
                     </div>
+                    <div class="alert alert-warning" role="alert" invisible="value_issue_pending_count == 0 or state != 'mapped'">
+                        Hay <field name="value_issue_pending_count" class="fw-bold"/> valores que no existen en Odoo.
+                        Revísalos en la pestaña <strong>Valores a revisar</strong> (la sugerencia se basa en similitud de escritura).
+                        <button name="action_accept_value_suggestions" type="object" class="btn btn-link"
+                                string="Aceptar sugerencias seguras"/>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="value_memory_applied_count == 0">
+                        <field name="value_memory_applied_count" class="fw-bold"/> valores se corrigieron con la memoria.
+                        Puedes revisarlos o cambiarlos en la pestaña <strong>Valores a revisar</strong>.
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="value_overflow_count == 0">
+                        Hay <field name="value_overflow_count" class="fw-bold"/> columnas con demasiados valores desconocidos;
+                        revisa el mapeo (probablemente la columna está asignada al campo equivocado).
+                    </div>
                     <group>
                         <group string="Archivo &amp; Carga">
                             <field name="filename" invisible="1"/>
@@ -140,6 +154,26 @@
                                     <field name="llm_justification" readonly="1" optional="show"/>
                                     <field name="is_ignored" widget="boolean_toggle"/>
                                     <field name="is_conflict" column_invisible="1"/>
+                                    <field name="value_issue_overflow" readonly="1" optional="hide"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page name="value_corrections" string="Valores a revisar" invisible="not value_correction_ids">
+                            <field name="value_correction_ids" readonly="state != 'mapped'">
+                                <list editable="bottom" create="0" delete="0"
+                                      decoration-warning="is_ambiguous" decoration-muted="source == 'memory'">
+                                    <field name="original_value" readonly="1"/>
+                                    <field name="occurrence_count" readonly="1"/>
+                                    <field name="issue_type" readonly="1"/>
+                                    <field name="suggested_label" readonly="1"/>
+                                    <field name="confidence" readonly="1" widget="percentage"/>
+                                    <field name="source" readonly="1" widget="badge"
+                                           decoration-info="source == 'fuzzy'"
+                                           decoration-success="source == 'memory'"
+                                           decoration-muted="source == 'none'"/>
+                                    <field name="decision"/>
+                                    <field name="manual_value"/>
+                                    <field name="is_ambiguous" column_invisible="1"/>
                                 </list>
                             </field>
                         </page>

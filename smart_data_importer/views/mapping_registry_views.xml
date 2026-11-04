@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_mapping_registry_list" model="ir.ui.view">
+        <field name="name">mapping.registry.list</field>
+        <field name="model">mapping.registry</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" decoration-muted="not active">
+                <field name="synonym"/>
+                <field name="model_id"/>
+                <field name="field_id" domain="[('model_id', '=', model_id)]"/>
+                <field name="language"/>
+                <field name="priority"/>
+                <field name="origin" widget="badge" decoration-info="origin == 'seed'" decoration-success="origin == 'learned'"/>
+                <field name="usage_count"/>
+                <field name="learned_by"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_mapping_registry_search" model="ir.ui.view">
+        <field name="name">mapping.registry.search</field>
+        <field name="model">mapping.registry</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="synonym"/>
+                <field name="model_id"/>
+                <field name="field_id"/>
+                <filter string="Seed data" name="seed" domain="[('origin', '=', 'seed')]"/>
+                <filter string="Learned" name="learned" domain="[('origin', '=', 'learned')]"/>
+                <separator/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Origin" name="group_origin" context="{'group_by': 'origin'}"/>
+                    <filter string="Model" name="group_model" context="{'group_by': 'model_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_mapping_registry" model="ir.actions.act_window">
+        <field name="name">Sinónimos y memoria de encabezados</field>
+        <field name="res_model">mapping.registry</field>
+        <field name="view_mode">list</field>
+    </record>
+</odoo>

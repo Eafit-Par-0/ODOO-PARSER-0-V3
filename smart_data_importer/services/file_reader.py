@@ -4,7 +4,6 @@ import datetime
 import hashlib
 import io
 import logging
-import unicodedata
 import warnings
 from collections import OrderedDict
 
@@ -13,6 +12,8 @@ import pandas as pd
 
 from odoo import _
 from odoo.exceptions import UserError
+
+from .text_utils import normalize_text
 
 _logger = logging.getLogger(__name__)
 
@@ -65,12 +66,7 @@ class FileReader:
     @staticmethod
     def normalize_header(header):
         """Shared normalization: trim, lowercase, remove diacritics."""
-        if header is None:
-            return ''
-        header = str(header).strip().lower()
-        header = ''.join(c for c in unicodedata.normalize('NFD', header)
-                         if unicodedata.category(c) != 'Mn')
-        return header
+        return normalize_text(header)
 
     @classmethod
     def read(cls, file_base64, filename, sheet_name=None):

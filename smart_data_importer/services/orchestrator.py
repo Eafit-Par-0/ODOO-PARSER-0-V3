@@ -148,6 +148,7 @@ class PipelineOrchestrator:
                 'empty_count': int(column.isna().sum()),
             }
             val.update(resolved.get(header, {}))
+            val['suggested_field_id'] = val.get('target_field_id') or False
 
             target_id = val.get('target_field_id')
             if target_id and not val.get('is_ignored'):
