@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Row errors: list used from the "Errores por columna" tab -->
+    <record id="view_import_row_error_list" model="ir.ui.view">
+        <field name="name">import.row.error.list</field>
+        <field name="model">import.row.error</field>
+        <field name="arch" type="xml">
+            <list create="0" edit="0" delete="0">
+                <field name="column_header"/>
+                <field name="row_number"/>
+                <field name="cell_value"/>
+                <field name="error_category" widget="badge" decoration-danger="1"/>
+                <field name="friendly_message"/>
+                <field name="hint"/>
+                <field name="field_label" optional="hide"/>
+                <field name="error_message" optional="hide"/>
+                <field name="raw_data" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_import_row_error_form" model="ir.ui.view">
+        <field name="name">import.row.error.form</field>
+        <field name="model">import.row.error</field>
+        <field name="arch" type="xml">
+            <form create="0" edit="0" delete="0">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="column_header"/>
+                            <field name="field_label"/>
+                            <field name="row_number"/>
+                            <field name="cell_value"/>
+                            <field name="error_category"/>
+                        </group>
+                        <group>
+                            <field name="friendly_message"/>
+                            <field name="hint"/>
+                        </group>
+                    </group>
+                    <group string="Detalle técnico">
+                        <field name="error_type"/>
+                        <field name="error_message"/>
+                        <field name="raw_data"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_import_row_error_search" model="ir.ui.view">
+        <field name="name">import.row.error.search</field>
+        <field name="model">import.row.error</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="column_header"/>
+                <field name="cell_value"/>
+                <field name="row_number"/>
+                <field name="error_category"/>
+                <separator/>
+                <filter name="group_column" string="Columna" context="{'group_by': 'column_header'}"/>
+                <filter name="group_category" string="Problema" context="{'group_by': 'error_category'}"/>
+            </search>
+        </field>
+    </record>
+</odoo>

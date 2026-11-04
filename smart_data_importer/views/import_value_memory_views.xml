@@ -24,9 +24,9 @@
                 <field name="original_value"/>
                 <field name="field_id"/>
                 <field name="learned_by"/>
-                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Archivados" name="inactive" domain="[('active', '=', False)]"/>
                 <group>
-                    <filter string="Field" name="group_field" context="{'group_by': 'field_id'}"/>
+                    <filter string="Campo" name="group_field" context="{'group_by': 'field_id'}"/>
                 </group>
             </search>
         </field>
@@ -38,10 +38,10 @@
         <field name="view_mode">list</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                No learned values yet.
+                Todavía no hay valores aprendidos.
             </p>
             <p>
-                Corrections accepted when confirming an import are remembered here and reused in later imports.
+                Las correcciones aceptadas al confirmar una importación se guardan aquí y se reutilizan en las siguientes.
             </p>
         </field>
     </record>

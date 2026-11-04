@@ -7,49 +7,49 @@
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//form" position="inside">
-                <app data-string="Smart Importer" string="Smart Importer" name="smart_data_importer" groups="smart_data_importer.group_smart_importer_admin">
-                    <block title="General Settings" name="smart_importer_general">
-                        <setting string="Max File Size (MB)" help="Maximum allowed size for uploaded files.">
+                <app data-string="Importador Inteligente" string="Importador Inteligente" name="smart_data_importer" groups="smart_data_importer.group_smart_importer_admin">
+                    <block title="Ajustes generales" name="smart_importer_general">
+                        <setting string="Tamaño máximo de archivo (MB)" help="Tamaño máximo permitido para los archivos cargados.">
                             <field name="smart_data_importer_max_file_size_mb"/>
                         </setting>
-                        <setting string="Fuzzy Threshold" help="Threshold for Levenshtein matching (0-100).">
+                        <setting string="Umbral de similitud" help="Umbral de similitud de encabezados (Levenshtein, 0-100).">
                             <field name="smart_data_importer_fuzzy_threshold"/>
                         </setting>
-                        <setting string="Chunk Size" help="Number of records to process per job. Default is 500 to avoid worker timeout.">
+                        <setting string="Tamaño de lote" help="Registros que se procesan por lote. Por defecto 500, para que el servidor no se quede sin tiempo.">
                             <field name="smart_data_importer_chunk_size"/>
                         </setting>
                     </block>
-                    <block title="Value Correction" name="smart_importer_value_correction">
-                        <setting string="Suggestion Threshold" help="Minimum similarity (0-100) to suggest a correction for a value that does not exist in Odoo.">
+                    <block title="Corrección de valores" name="smart_importer_value_correction">
+                        <setting string="Umbral de sugerencia" help="Similitud mínima (0-100) para sugerir una corrección a un valor que no existe en Odoo.">
                             <field name="smart_data_importer_value_fuzzy_threshold"/>
                         </setting>
-                        <setting string="Bulk Accept Threshold" help="Minimum similarity (0-100) for the 'Accept safe suggestions' button. Ambiguous suggestions are never accepted in bulk.">
+                        <setting string="Umbral de aceptación masiva" help="Similitud mínima (0-100) para el botón 'Aceptar sugerencias seguras'. Las sugerencias ambiguas nunca se aceptan en bloque.">
                             <field name="smart_data_importer_value_bulk_accept_threshold"/>
                         </setting>
-                        <setting string="Max Candidates" help="Related models with more records than this are not searched for similar values.">
+                        <setting string="Máximo de candidatos" help="En modelos relacionados con más registros que este número no se buscan valores parecidos.">
                             <field name="smart_data_importer_value_fuzzy_max_candidates"/>
                         </setting>
                     </block>
-                    <block title="AI Universal Assistant (DeepSeek, Claude, Gemini, GPT)" name="smart_importer_llm">
-                        <setting string="Enable AI Engine" help="Enables AI to analyze spreadsheets, auto-generate templates, suggest mappings and normalization rules.">
+                    <block title="Asistente de IA (DeepSeek, Claude, Gemini, GPT)" name="smart_importer_llm">
+                        <setting string="Activar IA" help="Permite que la IA analice las hojas, genere plantillas y sugiera mapeos y reglas de limpieza.">
                             <field name="smart_data_importer_llm_enabled"/>
                         </setting>
-                        <setting string="Provider" invisible="not smart_data_importer_llm_enabled">
+                        <setting string="Proveedor" invisible="not smart_data_importer_llm_enabled">
                             <field name="smart_data_importer_llm_provider"/>
                         </setting>
-                        <setting string="Model Name" invisible="not smart_data_importer_llm_enabled" help="Leave blank to use the provider default (deepseek-chat, claude-haiku-5-5, gemini-3.5-flash-lite, gpt-4o-mini).">
-                            <field name="smart_data_importer_llm_model" placeholder="e.g. deepseek-chat, claude-haiku-5-5, gemini-3.5-flash-lite"/>
+                        <setting string="Modelo de IA" invisible="not smart_data_importer_llm_enabled" help="Déjalo vacío para usar el modelo por defecto del proveedor (deepseek-chat, claude-haiku-5-5, gemini-3.5-flash-lite, gpt-4o-mini).">
+                            <field name="smart_data_importer_llm_model" placeholder="ej. deepseek-chat, claude-haiku-5-5, gemini-3.5-flash-lite"/>
                         </setting>
-                        <setting string="API Key" invisible="not smart_data_importer_llm_enabled">
-                            <field name="smart_data_importer_llm_api_key" password="True" placeholder="API key or token..."/>
+                        <setting string="Clave de API" invisible="not smart_data_importer_llm_enabled">
+                            <field name="smart_data_importer_llm_api_key" password="True" placeholder="Clave de API o token..."/>
                         </setting>
-                        <setting string="Custom Base URL" invisible="not smart_data_importer_llm_enabled" help="Required for Custom/Local LLMs (Ollama http://localhost:11434/v1, Groq, OpenRouter). Optional proxy for others.">
+                        <setting string="URL base personalizada" invisible="not smart_data_importer_llm_enabled" help="Obligatoria para modelos personalizados o locales (Ollama http://localhost:11434/v1, Groq, OpenRouter). Opcional para los demás.">
                             <field name="smart_data_importer_llm_base_url" placeholder="https://api.groq.com/openai/v1"/>
                         </setting>
-                        <setting string="Send sample values" invisible="not smart_data_importer_llm_enabled" help="If disabled, only the column headers are sent to the AI provider, never the cell contents.">
+                        <setting string="Enviar valores de ejemplo" invisible="not smart_data_importer_llm_enabled" help="Si está desactivado, a la IA solo se envían los encabezados, nunca el contenido de las celdas.">
                             <field name="smart_data_importer_llm_send_samples"/>
                         </setting>
-                        <setting string="Test Connection" invisible="not smart_data_importer_llm_enabled" help="Verify your AI credentials and model availability.">
+                        <setting string="Probar conexión" invisible="not smart_data_importer_llm_enabled" help="Verifica las credenciales y que el modelo de IA esté disponible.">
                             <button name="action_test_llm_connection" type="object" string="⚡ Probar Conexión IA" class="btn-secondary"/>
                         </setting>
                     </block>
@@ -59,7 +59,7 @@
     </record>
 
     <record id="action_smart_importer_configuration" model="ir.actions.act_window">
-        <field name="name">Settings</field>
+        <field name="name">Ajustes</field>
         <field name="res_model">res.config.settings</field>
         <field name="view_mode">form</field>
         <field name="context">{'module' : 'smart_data_importer'}</field>

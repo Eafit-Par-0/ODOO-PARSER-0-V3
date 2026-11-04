@@ -2,31 +2,31 @@
 <odoo>
     <!-- Top Level Menu -->
     <menuitem id="menu_smart_importer_root"
-              name="Smart Importer"
+              name="Importador Inteligente"
               sequence="50"
               groups="base.group_user"/>
 
     <!-- Submenus -->
     <menuitem id="menu_smart_importer_sessions"
-              name="Sessions"
+              name="Sesiones"
               parent="menu_smart_importer_root"
               action="action_import_session"
               sequence="10"/>
 
     <menuitem id="menu_smart_importer_templates"
-              name="Templates"
+              name="Plantillas"
               parent="menu_smart_importer_root"
               action="action_import_template"
               sequence="20"/>
 
     <menuitem id="menu_smart_importer_config"
-              name="Configuration"
+              name="Configuración"
               parent="menu_smart_importer_root"
               sequence="100"
               groups="base.group_user"/>
 
     <menuitem id="menu_smart_importer_cleansing_rules"
-              name="Cleansing Rules"
+              name="Reglas de limpieza"
               parent="menu_smart_importer_config"
               action="action_import_cleansing_rule"
               sequence="10"/>
@@ -45,7 +45,7 @@
               sequence="40"/>
 
     <menuitem id="menu_smart_importer_settings"
-              name="Settings"
+              name="Ajustes"
               parent="menu_smart_importer_config"
               action="action_smart_importer_configuration"
               sequence="20"/>

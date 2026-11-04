@@ -9,27 +9,27 @@ _logger = logging.getLogger(__name__)
 
 class ImportValueMemory(models.Model):
     _name = 'import.value.memory'
-    _description = 'Learned Value Correction'
+    _description = 'Corrección de valor aprendida'
     _order = 'usage_count desc, id desc'
 
-    field_id = fields.Many2one('ir.model.fields', required=True, ondelete='cascade', index=True)
-    model_id = fields.Many2one(related='field_id.model_id', store=True)
-    comodel_name = fields.Char(related='field_id.relation', store=True)
+    field_id = fields.Many2one('ir.model.fields', string='Campo de Odoo', required=True, ondelete='cascade', index=True)
+    model_id = fields.Many2one(string='Modelo', related='field_id.model_id', store=True)
+    comodel_name = fields.Char(string='Modelo relacionado', related='field_id.relation', store=True)
 
-    original_value = fields.Char(required=True)
-    normalized_value = fields.Char(required=True, index=True)
-    res_id = fields.Many2oneReference(model_field='comodel_name')   # many2one / many2many
-    selection_key = fields.Char()                                   # selection
-    target_label = fields.Char(compute='_compute_target_label')
+    original_value = fields.Char(string='Valor original', required=True)
+    normalized_value = fields.Char(string='Valor normalizado', required=True, index=True)
+    res_id = fields.Many2oneReference(string='Registro', model_field='comodel_name')   # many2one / many2many
+    selection_key = fields.Char(string='Clave de la opción')                                   # selection
+    target_label = fields.Char(string='Corregir como', compute='_compute_target_label')
 
-    usage_count = fields.Integer(default=1)
-    last_used = fields.Datetime(default=fields.Datetime.now)
-    learned_by = fields.Many2one('res.users', default=lambda self: self.env.user)
-    active = fields.Boolean(default=True)
+    usage_count = fields.Integer(string='Veces usado', default=1)
+    last_used = fields.Datetime(string='Último uso', default=fields.Datetime.now)
+    learned_by = fields.Many2one('res.users', string='Aprendido por', default=lambda self: self.env.user)
+    active = fields.Boolean(string='Activo', default=True)
 
     _field_value_uniq = models.Constraint(
         'unique(field_id, normalized_value)',
-        'This value already has a learned correction for this field.',
+        'Este valor ya tiene una corrección aprendida para este campo.',
     )
 
     @api.depends('field_id', 'res_id', 'selection_key')

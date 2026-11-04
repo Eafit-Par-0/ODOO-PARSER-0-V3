@@ -4,10 +4,10 @@ from odoo.addons.smart_data_importer.services.file_reader import FileReader
 
 class ImportSignatureMixin(models.AbstractModel):
     _name = 'import.signature.mixin'
-    _description = 'Import Header Signature & Structure Mixin'
+    _description = 'Firma y estructura de encabezados'
 
-    header_signature = fields.Char(string='Header Signature (Hash)', readonly=True, index=True)
-    header_list = fields.Text(string='Header Columns', readonly=True)
+    header_signature = fields.Char(string='Firma de encabezados (hash)', readonly=True, index=True)
+    header_list = fields.Text(string='Columnas de encabezado', readonly=True)
 
     @api.model
     def compute_header_signature(self, headers):

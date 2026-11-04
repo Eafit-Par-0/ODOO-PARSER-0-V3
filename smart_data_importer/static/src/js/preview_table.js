@@ -46,7 +46,7 @@ export class PreviewTableWidget extends Component {
             }
         } catch (e) {
             console.error("Error loading import dashboard summary:", e);
-            this.state.error = e.message || "Failed to load preview.";
+            this.state.error = e.message || "No se pudo cargar la vista previa.";
         } finally {
             this.state.loading = false;
         }
