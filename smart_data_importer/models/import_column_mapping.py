@@ -1,4 +1,4 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
 
 REQUIRED_LEVELS = [
     ('required', 'Required'),
@@ -56,6 +56,52 @@ class ImportColumnMapping(models.Model):
     value_issue_overflow = fields.Boolean(
         string='Too many unknown values', readonly=True,
         help="The column has too many values unknown to Odoo; it is probably mapped to the wrong field.")
+
+    # Does the column belong to the target model? (PO requirement #2)
+    foreign_model_names = fields.Char(
+        string='Pertenece a', readonly=True,
+        help="Other Odoo models that have a field with exactly this technical name, "
+             "while the target model does not.")
+    model_fit = fields.Selection([
+        ('ok', 'Del modelo'),
+        ('foreign', 'De otro modelo'),
+        ('unknown', 'Sin campo'),
+        ('ignored', 'Ignorada'),
+    ], string='¿Pertenece?', compute='_compute_model_fit', store=True)
+    model_fit_note = fields.Char(string='Aviso de columna', compute='_compute_model_fit', store=True)
+
+    @api.depends('target_field_id', 'is_ignored', 'foreign_model_names', 'source',
+                 'session_id.target_model_id')
+    def _compute_model_fit(self):
+        for rec in self:
+            model = rec.session_id.target_model_id.name or rec.session_id.target_model_id.model or ''
+            header = rec.source_header
+            guessed = rec.source in ('fuzzy', 'llm')
+            if rec.is_ignored:
+                rec.model_fit = 'ignored'
+                rec.model_fit_note = False
+            elif rec.foreign_model_names and (not rec.target_field_id or guessed):
+                rec.model_fit = 'foreign'
+                if rec.target_field_id:
+                    rec.model_fit_note = _(
+                        "'%(header)s' es un campo de %(others)s, no de %(model)s. Se asignó por parecido a "
+                        "'%(field)s': confirma que es correcto o ignora la columna."
+                    ) % {'header': header, 'others': rec.foreign_model_names, 'model': model,
+                         'field': rec.target_field_id.field_description}
+                else:
+                    rec.model_fit_note = _(
+                        "'%(header)s' no existe en %(model)s: es un campo de %(others)s. "
+                        "Esta columna no se importará."
+                    ) % {'header': header, 'model': model, 'others': rec.foreign_model_names}
+            elif not rec.target_field_id:
+                rec.model_fit = 'unknown'
+                rec.model_fit_note = _(
+                    "No se encontró un campo de %(model)s para '%(header)s'. "
+                    "Asígnalo a mano o ignóralo; si no, esta columna no se importará."
+                ) % {'model': model, 'header': header}
+            else:
+                rec.model_fit = 'ok'
+                rec.model_fit_note = False
 
     @api.onchange('target_field_id')
     def _onchange_target_field_id(self):

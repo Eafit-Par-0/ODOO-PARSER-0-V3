@@ -69,6 +69,74 @@ class ImportSession(models.Model):
     value_overflow_count = fields.Integer(
         string='Columns with too many unknown values', compute='_compute_value_counts')
 
+    # Errors grouped by column (PO requirement #1)
+    error_summary_ids = fields.One2many('import.error.summary', 'session_id', string='Errores por columna')
+    precheck_error_summary_ids = fields.One2many(
+        'import.error.summary', 'session_id', string='Problemas detectados antes de importar',
+        domain=[('stage', '=', 'precheck')])
+    import_error_summary_ids = fields.One2many(
+        'import.error.summary', 'session_id', string='Errores de la importación',
+        domain=[('stage', '=', 'import')])
+    precheck_problem_count = fields.Integer(
+        string='Problemas antes de importar', compute='_compute_error_counts',
+        help="Filas con datos que Odoo no podrá aceptar, detectadas al analizar el archivo.")
+    precheck_column_count = fields.Integer(string='Columnas con problemas', compute='_compute_error_counts')
+    import_error_column_count = fields.Integer(string='Columnas con errores', compute='_compute_error_counts')
+
+    # Columns that do not belong to the target model (PO requirement #2)
+    foreign_column_count = fields.Integer(
+        string='Columnas de otro modelo', compute='_compute_column_fit',
+        help="Columnas cuyo nombre técnico es un campo de otro modelo de Odoo, no del modelo destino.")
+    unknown_column_count = fields.Integer(
+        string='Columnas sin campo', compute='_compute_column_fit',
+        help="Columnas para las que no se encontró ningún campo del modelo destino.")
+    foreign_columns_text = fields.Char(string='Columnas de otro modelo (lista)', compute='_compute_column_fit')
+    unknown_columns_text = fields.Char(string='Columnas sin campo (lista)', compute='_compute_column_fit')
+    foreign_model_hint = fields.Char(string='Modelo sugerido por las columnas ajenas', compute='_compute_column_fit')
+
+    @api.depends('error_summary_ids.stage', 'error_summary_ids.row_count')
+    def _compute_error_counts(self):
+        for rec in self:
+            pre = rec.error_summary_ids.filtered(lambda e: e.stage == 'precheck')
+            post = rec.error_summary_ids.filtered(lambda e: e.stage == 'import')
+            rec.precheck_problem_count = sum(pre.mapped('row_count')) or len(pre)
+            rec.precheck_column_count = len(set(pre.mapped('column_header')))
+            rec.import_error_column_count = len(set(post.mapped('column_header')))
+
+    @api.depends('column_mapping_ids.model_fit', 'column_mapping_ids.foreign_model_names', 'target_model_id')
+    def _compute_column_fit(self):
+        for rec in self:
+            foreign = rec.column_mapping_ids.filtered(lambda m: m.model_fit == 'foreign')
+            unknown = rec.column_mapping_ids.filtered(lambda m: m.model_fit == 'unknown')
+            rec.foreign_column_count = len(foreign)
+            rec.unknown_column_count = len(unknown)
+            rec.foreign_columns_text = self._short_list(foreign.mapped('source_header'))
+            rec.unknown_columns_text = self._short_list(unknown.mapped('source_header'))
+            rec.foreign_model_hint = rec._guess_foreign_model(foreign)
+
+    @staticmethod
+    def _short_list(names, limit=8):
+        names = list(names)
+        text = ', '.join(names[:limit])
+        if len(names) > limit:
+            text += _(" y %s más") % (len(names) - limit)
+        return text
+
+    def _guess_foreign_model(self, foreign):
+        """If most foreign columns belong to the same other model, name it:
+        the user probably picked the wrong target model."""
+        if len(foreign) < 2:
+            return False
+        counts = {}
+        for mapping in foreign:
+            for name in (mapping.foreign_model_names or '').split(', '):
+                if name:
+                    counts[name] = counts.get(name, 0) + 1
+        if not counts:
+            return False
+        best, hits = max(counts.items(), key=lambda item: item[1])
+        return best if hits * 2 >= len(foreign) else False
+
     @api.depends('value_correction_ids.decision', 'value_correction_ids.source',
                  'column_mapping_ids.value_issue_overflow')
     def _compute_value_counts(self):
@@ -438,6 +506,7 @@ class ImportSession(models.Model):
             'duplicate_count_odoo': 0,
         })
         self.job_ids.unlink()
+        self._replace_error_summary('import', [])
 
         job_vals = [{
             'session_id': self.id,
@@ -476,6 +545,7 @@ class ImportSession(models.Model):
         mappings = self.column_mapping_ids.filtered(lambda m: not m.is_ignored and m.target_field_id)
         if not mappings or not self.file or not self.target_model_id:
             self.value_correction_ids.unlink()
+            self._replace_error_summary('precheck', [])
             return True
 
         config = self.env['ir.config_parameter'].sudo()
@@ -490,6 +560,8 @@ class ImportSession(models.Model):
             'rules': m.cleansing_rule_ids,
         } for m in mappings]
         df = self._read_file()['df']
+        # Same read of the file: also find the cells Odoo will reject (numbers, dates, required...)
+        self._precheck_errors(df, mappings)
         validator = ValueValidator(self.env, self.target_model_id.model, threshold=threshold,
                                    max_candidates=max_candidates,
                                    memory=self._load_value_memory(mappings))
@@ -526,6 +598,159 @@ class ImportSession(models.Model):
             if m.value_issue_overflow != flag:
                 m.write({'value_issue_overflow': flag})
         return True
+
+    # ------------------------------------------------------------------
+    # Errors grouped by column (PO requirement #1)
+    # ------------------------------------------------------------------
+
+    # Field types whose unknown values are handled in 'Valores a revisar'
+    LOOKUP_TYPES = ('selection', 'many2one', 'many2many')
+    # Field types whose text is always accepted
+    FREE_TEXT_TYPES = ('char', 'text', 'html')
+
+    @api.model
+    def _whole_row_label(self):
+        from ..services.error_explainer import WHOLE_ROW
+        return WHOLE_ROW
+
+    def _precheck_errors(self, df, mappings):
+        """Dry run of the conversion, before importing anything.
+
+        Finds, grouped by column: required cells left empty, required Odoo
+        fields with no column, and numbers / dates / Sí-No values Odoo cannot
+        read. Values of lookup fields are not repeated here: they already have
+        the 'Valores a revisar' tab.
+        """
+        self.ensure_one()
+        import pandas as pd
+        from ..services.cleansing_engine import CleansingEngine
+        from ..services.value_converter import ValueConverter, ConversionError
+        from ..services.field_catalog import FieldCatalog
+
+        model_name = self.target_model_id.model
+        Model = self.env[model_name]
+        converter = ValueConverter(self.env, model_name, overrides=self._value_overrides())
+        label = self.env['import.job']._field_label
+        errors = []
+
+        for mapping in mappings:
+            field = Model._fields.get(mapping.target_field_id.name)
+            header = mapping.source_header
+            if header not in df.columns:
+                continue
+            field_label = label(mapping.target_field_id)
+            if field is None:
+                errors.append({'column': header, 'field_label': field_label, 'category': 'unknown_field'})
+                continue
+            required = field.required or mapping.required_level == 'required'
+            check_values = field.type not in self.LOOKUP_TYPES + self.FREE_TEXT_TYPES
+            if not required and not check_values:
+                continue
+            rules = mapping.cleansing_rule_ids
+            for row_number, value in df[header].items():
+                empty = value is None or (not isinstance(value, (list, dict)) and pd.isna(value)) or str(value).strip() == ''
+                if empty:
+                    if required and field.type != 'boolean':
+                        errors.append({'column': header, 'field_label': field_label, 'category': 'required',
+                                       'row': int(row_number)})
+                    continue
+                if not check_values:
+                    continue
+                if rules:
+                    value = CleansingEngine.apply_rules(value, rules)
+                try:
+                    converter.convert(field.name, value, subfield=mapping.target_subfield or None)
+                except ConversionError as e:
+                    errors.append({
+                        'column': header, 'field_label': field_label, 'category': e.code,
+                        'row': int(row_number), 'value': e.value if e.value is not None else value,
+                        'technical': str(e),
+                    })
+
+        # Required Odoo fields that no column fills and that have no default value
+        mapped_names = set(mappings.mapped('target_field_id.name'))
+        importable = FieldCatalog.importable_fields(self.env, model_name)
+        missing = [f for f in importable
+                   if f.name not in mapped_names and Model._fields[f.name].required
+                   and f.ttype != 'boolean']
+        if missing:
+            try:
+                defaults = Model.default_get([f.name for f in missing])
+            except Exception:
+                _logger.debug("default_get failed on %s", model_name, exc_info=True)
+                defaults = {f.name: True for f in missing}  # do not report what we cannot check
+            for f in missing:
+                if defaults.get(f.name) in (None, False, ''):
+                    errors.append({'column': _("(sin columna) %s") % f.field_description,
+                                   'field_label': label(f), 'category': 'missing_column'})
+
+        self._replace_error_summary('precheck', errors)
+        return errors
+
+    def _build_error_summary_from_rows(self):
+        """After the import: group the row errors by column."""
+        self.ensure_one()
+        errors = [{
+            'column': e.column_header,
+            'field_label': e.field_label,
+            'category': e.error_category or 'other',
+            'row': e.row_number,
+            'value': e.cell_value,
+            'technical': e.error_message,
+        } for e in self.sudo().row_error_ids]
+        self._replace_error_summary('import', errors)
+
+    def _replace_error_summary(self, stage, errors):
+        from ..services.error_explainer import group_errors
+        Summary = self.env['import.error.summary'].sudo()
+        Summary.search([('session_id', '=', self.id), ('stage', '=', stage)]).unlink()
+        groups = group_errors(errors)
+        if groups:
+            Summary.create([{
+                'session_id': self.id,
+                'stage': stage,
+                'sequence': i,
+                'column_header': g['column'],
+                'field_label': g['field_label'] or False,
+                'error_category': g['category'],
+                'title': g['title'],
+                'message': g['message'],
+                'hint': g['hint'],
+                'error_count': g['error_count'],
+                'row_count': g['row_count'],
+                'rows_text': g['rows_text'] or False,
+                'sample_values': g['sample_values'] or False,
+                'technical_detail': g['technical'] or False,
+            } for i, g in enumerate(groups)])
+
+    def action_view_all_row_errors(self):
+        """All the row errors of the import, grouped by column."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _("Errores por columna"),
+            'res_model': 'import.row.error',
+            'view_mode': 'list,form',
+            'views': [(self.env.ref('smart_data_importer.view_import_row_error_list').id, 'list'),
+                      (False, 'form')],
+            'search_view_id': self.env.ref('smart_data_importer.view_import_row_error_search').id,
+            'domain': [('session_id', '=', self.id)],
+            'context': {'group_by': ['column_header', 'error_category']},
+        }
+
+    # ------------------------------------------------------------------
+    # Columns that do not belong to the model (PO requirement #2)
+    # ------------------------------------------------------------------
+
+    def action_ignore_foreign_columns(self):
+        """Mark as ignored the columns that belong to another model or have no field."""
+        self.ensure_one()
+        columns = self.column_mapping_ids.filtered(lambda m: m.model_fit in ('foreign', 'unknown'))
+        columns.write({'is_ignored': True})
+        self._validate_values()
+        return self._notify(
+            _('Columnas ignoradas'),
+            _("Se ignoraron %s columnas que no pertenecen a '%s'.") % (len(columns), self.target_model_id.name))
 
     def _learn_headers(self):
         """Remember the headers a person mapped by hand (not template, not the initial suggestion)."""

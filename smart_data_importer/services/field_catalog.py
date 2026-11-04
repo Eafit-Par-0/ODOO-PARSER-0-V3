@@ -103,3 +103,49 @@ class FieldCatalog:
         if count < 2 or score < 0.3:
             return False, score
         return model_name, round(score, 2)
+
+    # Models that never receive an import, ignored when telling the user
+    # "this column belongs to another model"
+    IGNORED_MODEL_PREFIXES = ('ir.', 'base.', 'bus.', 'mail.', 'res.config', 'report.', 'web_')
+
+    @classmethod
+    def foreign_models(cls, env, model_name, headers, limit=3):
+        """Columns whose technical name is NOT a field of ``model_name`` but is one of other models.
+
+        :return: ``{header: 'Producto, Plantilla de producto'}`` (model descriptions, at most
+            ``limit`` per header). Headers that are not technical names (e.g. "Nombre del
+            cliente") or that exist on the target model are left out.
+        """
+        if model_name not in env:
+            return {}
+        target_fields = env[model_name]._fields
+        wanted = {}
+        for header in headers:
+            base, _sub = split_header(header)
+            if base and base not in target_fields:
+                wanted.setdefault(base, []).append(header)
+        if not wanted:
+            return {}
+
+        rows = env['ir.model.fields'].sudo().search_read(
+            [('name', 'in', list(wanted)), ('model_id.transient', '=', False), ('model', '!=', model_name)],
+            ['name', 'model', 'model_id'],
+        )
+        found = {}
+        for row in rows:
+            other = row['model']
+            if other.startswith(cls.IGNORED_MODEL_PREFIXES) or other not in env or env[other]._abstract:
+                continue
+            label = row['model_id'][1] if row.get('model_id') else other
+            names = found.setdefault(row['name'], [])
+            if label not in names:
+                names.append(label)
+
+        result = {}
+        for base, names in found.items():
+            text = ', '.join(sorted(names)[:limit])
+            if len(names) > limit:
+                text += ' …'
+            for header in wanted[base]:
+                result[header] = text
+        return result

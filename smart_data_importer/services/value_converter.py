@@ -15,15 +15,27 @@ DATETIME_FORMATS = ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d %H:%M', '%d/%m/%Y %H:%M:%S', 
 
 
 class ConversionError(ValueError):
-    """A cell value cannot be converted to the target field type."""
+    """A cell value cannot be converted to the target field type.
+
+    ``code`` tells the kind of problem (see ``error_explainer.CATEGORIES``) so the
+    error can be explained in plain language and grouped by column.
+    """
+    default_code = 'other'
+
+    def __init__(self, message, code=None, value=None):
+        super().__init__(message)
+        self.code = code or self.default_code
+        self.value = value
 
 
 class ValueNotFoundError(ConversionError):
     """No record / selection option matches the value."""
+    default_code = 'not_found'
 
 
 class AmbiguousValueError(ConversionError):
     """More than one record matches the value exactly."""
+    default_code = 'ambiguous'
 
 
 def split_many2many(text):
@@ -55,7 +67,7 @@ class ValueConverter:
         """Return the Odoo value for ``value`` or raise ConversionError."""
         field = self.model._fields.get(field_name)
         if field is None:
-            raise ConversionError("El campo '%s' no existe en %s." % (field_name, self.model_name))
+            raise ConversionError("El campo '%s' no existe en %s." % (field_name, self.model_name), code='unknown_field')
 
         if value is None:
             return False
@@ -83,7 +95,8 @@ class ValueConverter:
         if ftype == 'many2many':
             ids = [self._to_many2one(part, field, subfield) for part in split_many2many(text)]
             return [(6, 0, [rec_id for rec_id in ids if rec_id is not False])]
-        raise ConversionError("El tipo de campo '%s' (%s) todavía no se puede importar." % (ftype, field_name))
+        raise ConversionError("El tipo de campo '%s' (%s) todavía no se puede importar." % (ftype, field_name),
+                              code='unsupported_type', value=text)
 
     # ------------------------------------------------------------------
     def _label(self, field):
@@ -96,7 +109,8 @@ class ValueConverter:
         if norm in FALSE_VALUES:
             return False
         raise ConversionError(
-            "Valor '%s' no válido para %s: se espera 1/0, Sí/No o Verdadero/Falso." % (text, self._label(field))
+            "Valor '%s' no válido para %s: se espera 1/0, Sí/No o Verdadero/Falso." % (text, self._label(field)),
+            code='invalid_boolean', value=text,
         )
 
     def _to_number(self, text, field):
@@ -114,7 +128,8 @@ class ValueConverter:
         try:
             return float(clean)
         except ValueError:
-            raise ConversionError("Valor '%s' no es un número válido para %s." % (text, self._label(field)))
+            raise ConversionError("Valor '%s' no es un número válido para %s." % (text, self._label(field)),
+                                  code='invalid_number', value=text)
 
     def _to_date(self, text, field):
         for fmt in DATE_FORMATS:
@@ -122,7 +137,8 @@ class ValueConverter:
                 return datetime.datetime.strptime(text[:10] if fmt == '%Y-%m-%d' else text, fmt).date()
             except ValueError:
                 continue
-        raise ConversionError("Fecha '%s' no reconocida para %s (use AAAA-MM-DD)." % (text, self._label(field)))
+        raise ConversionError("Fecha '%s' no reconocida para %s (use AAAA-MM-DD)." % (text, self._label(field)),
+                              code='invalid_date', value=text)
 
     def _to_datetime(self, text, field):
         for fmt in DATETIME_FORMATS:
@@ -145,13 +161,14 @@ class ValueConverter:
         """
         field = self.model._fields.get(field_name)
         if field is None:
-            raise ConversionError("El campo '%s' no existe en %s." % (field_name, self.model_name))
+            raise ConversionError("El campo '%s' no existe en %s." % (field_name, self.model_name), code='unknown_field')
         text = str(text).strip()
         if field.type == 'selection':
             return self._to_selection(text, field)
         if field.type in ('many2one', 'many2many'):
             return self._to_many2one(text, field, subfield)
-        raise ConversionError("El tipo de campo '%s' no admite corrección de valores." % field.type)
+        raise ConversionError("El tipo de campo '%s' no admite corrección de valores." % field.type,
+                              code='unsupported_type', value=text)
 
     def _selection_options(self, field):
         if field.name in self._selection_cache:
@@ -181,7 +198,8 @@ class ValueConverter:
         labels = sorted({k for k in options.values()})
         raise ValueNotFoundError(
             "Valor '%s' no es una opción válida para %s. Opciones: %s"
-            % (text, self._label(field), ', '.join(map(str, labels)))
+            % (text, self._label(field), ', '.join(map(str, labels))),
+            value=text,
         )
 
     # ------------------------------------------------------------------
@@ -197,7 +215,8 @@ class ValueConverter:
         if subfield == 'id':
             record = self.env.ref(text, raise_if_not_found=False)
             if not record or record._name != comodel_name:
-                raise ValueNotFoundError("No existe el identificador externo '%s' en %s." % (text, comodel_name))
+                raise ValueNotFoundError("No existe el identificador externo '%s' en %s." % (text, comodel_name),
+                                         code='xmlid_not_found', value=text)
             self._m2o_cache[cache_key] = record.id
             return record.id
 
@@ -205,12 +224,14 @@ class ValueConverter:
         record = self._find_record(comodel, text)
         if not record:
             raise ValueNotFoundError(
-                "No se encontró '%s' en %s para el campo %s." % (text, comodel._description, self._label(field))
+                "No se encontró '%s' en %s para el campo %s." % (text, comodel._description, self._label(field)),
+                value=text,
             )
         if len(record) > 1:
             raise AmbiguousValueError(
                 "'%s' es ambiguo en %s (%s coincidencias) para %s."
-                % (text, comodel._description, len(record), self._label(field))
+                % (text, comodel._description, len(record), self._label(field)),
+                value=text,
             )
         self._m2o_cache[cache_key] = record.id
         return record.id

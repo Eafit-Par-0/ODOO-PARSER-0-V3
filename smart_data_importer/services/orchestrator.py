@@ -1,4 +1,4 @@
-from odoo.addons.smart_data_importer.services.field_catalog import split_header
+from odoo.addons.smart_data_importer.services.field_catalog import split_header, FieldCatalog
 from odoo.addons.smart_data_importer.services.file_reader import FileReader
 from odoo.addons.smart_data_importer.services.mapper_hash import HashMapper
 from odoo.addons.smart_data_importer.services.mapper_fuzzy import FuzzyMapper
@@ -136,6 +136,7 @@ class PipelineOrchestrator:
 
         mapping_vals = []
         assigned_fields = {}
+        foreign = FieldCatalog.foreign_models(env, session.target_model_id.model, list(df.columns))
         for header in df.columns:
             column = df[header]
             meta = column_meta.get(header) or {}
@@ -146,6 +147,7 @@ class PipelineOrchestrator:
                 'sample_values': ', '.join(sample_values_map.get(header, [])[:3]),
                 'required_level': meta.get('required_level') or False,
                 'empty_count': int(column.isna().sum()),
+                'foreign_model_names': foreign.get(header) or False,
             }
             val.update(resolved.get(header, {}))
             val['suggested_field_id'] = val.get('target_field_id') or False

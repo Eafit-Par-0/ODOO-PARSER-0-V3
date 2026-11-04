@@ -32,6 +32,7 @@ class ImportJob(models.Model):
         from ..services.cleansing_engine import CleansingEngine
         from ..services.deduplication_engine import DeduplicationEngine
         from ..services.value_converter import ValueConverter, ConversionError
+        from ..services.error_explainer import classify_exception
         import pandas as pd
 
         counters = {'created': 0, 'updated': 0, 'skipped': 0, 'failed': 0, 'dups': 0}
@@ -46,6 +47,8 @@ class ImportJob(models.Model):
             mappings = session.column_mapping_ids.filtered(lambda m: not m.is_ignored and m.target_field_id)
             plan = [(m.source_header, m.target_field_id.name, m.target_subfield or None, m.cleansing_rule_ids)
                     for m in mappings]
+            header_by_field = {m.target_field_id.name: m.source_header for m in mappings}
+            label_by_header = {m.source_header: self._field_label(m.target_field_id) for m in mappings}
             policy = session.duplicate_policy or 'update'
             criterion = session.duplicate_criterion or 'auto'
 
@@ -60,7 +63,14 @@ class ImportJob(models.Model):
                     try:
                         converted = converter.convert(field_name, val, subfield=subfield)
                     except ConversionError as e:
-                        errors.append(str(e))
+                        errors.append({
+                            'column': header,
+                            'field_label': label_by_header.get(header),
+                            'category': getattr(e, 'code', 'other'),
+                            'value': getattr(e, 'value', None) if getattr(e, 'value', None) is not None else val,
+                            'technical': str(e),
+                            'error_type': type(e).__name__,
+                        })
                         continue
                     if converted is not False or self.env[model_name]._fields[field_name].type == 'boolean':
                         row_dict[field_name] = converted
@@ -70,7 +80,7 @@ class ImportJob(models.Model):
                     continue
                 if errors:
                     counters['failed'] += 1
-                    self._log_row_error(row_number, row, 'ConversionError', '\n'.join(errors))
+                    self._log_row_errors(row_number, row, errors)
                     continue
 
                 try:
@@ -92,7 +102,15 @@ class ImportJob(models.Model):
                 except Exception as e:
                     counters['failed'] += 1
                     _logger.warning("Error importing row %s in job %s: %s", row_number, self.id, e)
-                    self._log_row_error(row_number, row, type(e).__name__, str(e))
+                    category, column = classify_exception(type(e).__name__, str(e), header_by_field)
+                    self._log_row_errors(row_number, row, [{
+                        'column': column,
+                        'field_label': label_by_header.get(column) if column else None,
+                        'category': category,
+                        'value': row.get(column) if column else None,
+                        'technical': str(e),
+                        'error_type': type(e).__name__,
+                    }])
 
             self.state = 'done'
         except Exception as e:
@@ -110,15 +128,32 @@ class ImportJob(models.Model):
         })
         self._check_session_completion()
 
-    def _log_row_error(self, row_number, row, error_type, message):
+    @staticmethod
+    def _field_label(field):
+        return "%s (%s)" % (field.field_description, field.name) if field else False
+
+    def _log_row_errors(self, row_number, row, errors):
+        """One ``import.row.error`` per problem found in the row, in plain language."""
+        from ..services.error_explainer import describe, WHOLE_ROW
         raw = {k: v for k, v in row.to_dict().items() if v is not None and str(v) != 'nan'}
-        self.env['import.row.error'].create({
-            'job_id': self.id,
-            'row_number': int(row_number),  # real spreadsheet row (index kept by FileReader)
-            'raw_data': str(raw),
-            'error_type': error_type,
-            'error_message': message,
-        })
+        vals_list = []
+        for err in errors:
+            info = describe(err['category'], err.get('field_label'))
+            value = err.get('value')
+            vals_list.append({
+                'job_id': self.id,
+                'row_number': int(row_number),  # real spreadsheet row (index kept by FileReader)
+                'raw_data': str(raw),
+                'error_type': err.get('error_type') or 'Error',
+                'error_message': err.get('technical') or '',
+                'column_header': err.get('column') or WHOLE_ROW,
+                'field_label': err.get('field_label') or False,
+                'cell_value': str(value)[:255] if value not in (None, False, '') and str(value) != 'nan' else False,
+                'error_category': err['category'],
+                'friendly_message': info['message'],
+                'hint': info['hint'],
+            })
+        self.env['import.row.error'].create(vals_list)
 
     def _check_session_completion(self):
         """When no job is pending, close the session and stamp the end time."""
@@ -128,6 +163,7 @@ class ImportJob(models.Model):
             ('state', 'in', ['pending', 'processing'])
         ])
         if pending_jobs == 0:
+            session._build_error_summary_from_rows()
             all_failed = all(j.state == 'error' for j in session.job_ids)
             session.sudo().write({
                 'state': 'error' if all_failed else 'done',

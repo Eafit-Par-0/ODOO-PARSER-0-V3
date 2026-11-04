@@ -91,6 +91,42 @@
                         Hay <field name="value_overflow_count" class="fw-bold"/> columnas con demasiados valores desconocidos;
                         revisa el mapeo (probablemente la columna está asignada al campo equivocado).
                     </div>
+                    <!-- Requisito 2: columnas que no pertenecen al modelo -->
+                    <div class="alert alert-warning" role="alert"
+                         invisible="state not in ('mapped', 'analyzing') or (foreign_column_count == 0 and unknown_column_count == 0)">
+                        <div invisible="foreign_column_count == 0">
+                            <strong>Hay <field name="foreign_column_count" class="fw-bold"/> columnas que no pertenecen a
+                            <field name="target_model_id" readonly="1" options="{'no_open': True}" class="fw-bold"/>:</strong>
+                            <field name="foreign_columns_text" readonly="1"/>.
+                            Son campos de otro modelo de Odoo: las que no tienen campo asignado no se importarán,
+                            y las que la IA o la similitud asignaron a otro campo debes confirmarlas.
+                            <span invisible="not foreign_model_hint">
+                                Parecen ser de <strong><field name="foreign_model_hint" readonly="1"/></strong>:
+                                ¿elegiste el modelo destino correcto?
+                            </span>
+                        </div>
+                        <div invisible="unknown_column_count == 0">
+                            <strong><field name="unknown_column_count" class="fw-bold"/> columnas no tienen un campo equivalente:</strong>
+                            <field name="unknown_columns_text" readonly="1"/>.
+                            Asígnalas a mano en el mapeo o ignóralas.
+                        </div>
+                        <div>Mira la columna <strong>¿Pertenece?</strong> en la pestaña Mapeo de Columnas.
+                            <button name="action_ignore_foreign_columns" type="object" class="btn btn-link"
+                                    string="Ignorar estas columnas" invisible="state != 'mapped'"/>
+                        </div>
+                    </div>
+                    <!-- Requisito 1: errores agrupados por columna -->
+                    <div class="alert alert-danger" role="alert" invisible="state != 'mapped' or precheck_problem_count == 0">
+                        Se detectaron <field name="precheck_problem_count" class="fw-bold"/> problemas en
+                        <field name="precheck_column_count" class="fw-bold"/> columnas que Odoo no va a aceptar.
+                        Revísalos en la pestaña <strong>Errores por columna</strong> antes de importar
+                        (las filas con errores no se importarán).
+                    </div>
+                    <div class="alert alert-danger" role="alert" invisible="state not in ('done', 'error') or failed_rows == 0">
+                        <field name="failed_rows" class="fw-bold" readonly="1"/> filas no se importaron, con errores en
+                        <field name="import_error_column_count" class="fw-bold"/> columnas.
+                        Revisa la pestaña <strong>Errores por columna</strong>: allí dice qué pasó y cómo corregirlo.
+                    </div>
                     <group>
                         <group string="Archivo &amp; Carga">
                             <field name="filename" invisible="1"/>
@@ -139,8 +175,15 @@
                         </page>
                         <page name="mappings" string="Mapeo de Columnas" invisible="state == 'draft'">
                             <field name="column_mapping_ids" readonly="state != 'mapped'">
-                                <list editable="bottom" decoration-danger="is_conflict" decoration-muted="is_ignored">
+                                <list editable="bottom" decoration-danger="is_conflict or model_fit == 'foreign'" decoration-muted="is_ignored">
                                     <field name="source_header" readonly="1"/>
+                                    <field name="model_fit" readonly="1" widget="badge" optional="show"
+                                           decoration-success="model_fit == 'ok'"
+                                           decoration-danger="model_fit == 'foreign'"
+                                           decoration-warning="model_fit == 'unknown'"
+                                           decoration-muted="model_fit == 'ignored'"/>
+                                    <field name="model_fit_note" readonly="1" optional="show"/>
+                                    <field name="foreign_model_names" readonly="1" optional="hide"/>
                                     <field name="required_level" readonly="1" widget="badge" optional="show"
                                            decoration-danger="required_level == 'required'"
                                            decoration-info="required_level == 'conditional'"
@@ -204,12 +247,57 @@
                                 </list>
                             </field>
                         </page>
+                        <page name="column_errors" string="⚠️ Errores por columna" invisible="not error_summary_ids">
+                            <div invisible="not precheck_error_summary_ids">
+                                <h5>Antes de importar</h5>
+                                <p class="text-muted">
+                                    Celdas que Odoo no podrá aceptar, agrupadas por columna. Corrige el archivo y vuelve a analizar,
+                                    o importa igual: esas filas quedarán como fallidas.
+                                </p>
+                                <field name="precheck_error_summary_ids" readonly="1" nolabel="1">
+                                    <list create="0" delete="0">
+                                        <field name="column_header"/>
+                                        <field name="title" widget="badge" decoration-danger="1"/>
+                                        <field name="row_count"/>
+                                        <field name="message"/>
+                                        <field name="hint"/>
+                                        <field name="sample_values"/>
+                                        <field name="rows_text" optional="show"/>
+                                        <field name="field_label" optional="hide"/>
+                                        <field name="technical_detail" optional="hide"/>
+                                    </list>
+                                </field>
+                            </div>
+                            <div invisible="not import_error_summary_ids">
+                                <h5>Resultado de la importación</h5>
+                                <field name="import_error_summary_ids" readonly="1" nolabel="1">
+                                    <list create="0" delete="0">
+                                        <field name="column_header"/>
+                                        <field name="title" widget="badge" decoration-danger="1"/>
+                                        <field name="row_count"/>
+                                        <field name="message"/>
+                                        <field name="hint"/>
+                                        <field name="sample_values"/>
+                                        <field name="rows_text" optional="show"/>
+                                        <field name="field_label" optional="hide"/>
+                                        <field name="technical_detail" optional="hide"/>
+                                        <button name="action_view_rows" type="object" string="Ver filas" icon="fa-list"/>
+                                    </list>
+                                </field>
+                                <button name="action_view_all_row_errors" type="object" class="btn btn-secondary"
+                                        string="Ver todas las filas con error" icon="fa-table"/>
+                            </div>
+                        </page>
                         <page name="row_errors" string="Errores por fila" invisible="failed_rows == 0">
                             <field name="row_error_ids" readonly="1">
                                 <list>
                                     <field name="row_number" string="Fila"/>
-                                    <field name="error_type"/>
-                                    <field name="error_message"/>
+                                    <field name="column_header"/>
+                                    <field name="cell_value"/>
+                                    <field name="friendly_message"/>
+                                    <field name="hint"/>
+                                    <field name="error_type" optional="hide"/>
+                                    <field name="error_message" optional="hide"/>
                                     <field name="raw_data" optional="hide"/>
                                 </list>
                             </field>

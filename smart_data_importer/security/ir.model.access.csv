@@ -13,3 +13,4 @@ access_import_session_sheet_user,import.session.sheet.user,model_import_session_
 access_import_value_correction_user,import.value.correction.user,model_import_value_correction,base.group_user,1,1,1,1
 access_import_value_memory_user,import.value.memory.user,model_import_value_memory,base.group_user,1,0,0,0
 access_import_value_memory_admin,import.value.memory.admin,model_import_value_memory,smart_data_importer.group_smart_importer_admin,1,1,1,1
+access_import_error_summary_user,import.error.summary.user,model_import_error_summary,base.group_user,1,1,1,1
