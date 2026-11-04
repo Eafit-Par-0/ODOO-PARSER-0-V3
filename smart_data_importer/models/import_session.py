@@ -227,7 +227,8 @@ class ImportSession(models.Model):
             return
         from ..services.field_catalog import FieldCatalog
         headers = [h.strip() for h in self.sheet_id.header_list.split(',')]
-        model_name, score = FieldCatalog.detect_model(self.env, headers)
+        model_name, score = FieldCatalog.detect_model(
+            self.env, headers, prefer=self.target_model_id.model or 'res.partner')
         vals = {'model_detection_score': score, 'model_detection_note': False}
         model = model_name and self.env['ir.model'].search([('model', '=', model_name)], limit=1)
         if model:

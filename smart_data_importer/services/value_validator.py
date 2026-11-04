@@ -45,6 +45,8 @@ class ValueValidator:
         """
         issues, overflow = [], set()
         fields_map = self.converter.model._fields
+        plan = [item if isinstance(item, dict) else dict(zip(PLAN_KEYS, item)) for item in plan]
+        self._names_in_file = self._file_record_names(df, plan, fields_map)
         for item in plan:
             if not isinstance(item, dict):
                 item = dict(zip(PLAN_KEYS, item))
@@ -62,6 +64,28 @@ class ValueValidator:
         return issues, overflow
 
     # ------------------------------------------------------------------
+    def _file_record_names(self, df, plan, fields_map):
+        """Normalized names of the records the file itself will create.
+
+        A self-referencing field (a contact's parent_id, an account group's
+        parent) may point to a record defined a few rows above in the same
+        file: it does not exist in Odoo yet, but the import will find it.
+        """
+        rec_name = self.converter.model._rec_name or 'name'
+        names = set()
+        for item in plan:
+            if item['field_name'] != rec_name or item['header'] not in df.columns:
+                continue
+            rules = item.get('rules')
+            for raw in df[item['header']]:
+                if raw is None or (not isinstance(raw, str) and pd.isna(raw)):
+                    continue
+                val = CleansingEngine.apply_rules(raw, rules) if rules else raw
+                text = str(val).strip()
+                if text:
+                    names.add(normalize_text(text))
+        return names
+
     def _validate_column(self, df, item, field, subfield):
         rules = item.get('rules')
         counts = {}  # cleaned cell value -> rows
@@ -82,7 +106,10 @@ class ValueValidator:
 
         # 1. exact lookup of every value (cheap); 2. only then suggestions
         failures = []
+        same_model = field.type in ('many2one', 'many2many') and field.comodel_name == self.model_name
         for value, rows in occurrences.items():
+            if same_model and normalize_text(value) in getattr(self, '_names_in_file', ()):
+                continue  # defined in this same file: resolved when the import reaches it
             try:
                 self.converter.resolve_single(field.name, value, subfield)
                 continue

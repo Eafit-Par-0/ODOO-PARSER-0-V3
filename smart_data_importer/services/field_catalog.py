@@ -60,11 +60,15 @@ class FieldCatalog:
         return records.filtered(keep)
 
     @classmethod
-    def detect_model(cls, env, headers):
+    def detect_model(cls, env, headers, prefer=None):
         """Guess the target model from technical column headers.
 
         Returns (model_name, score) where score is the share of technical
         headers that exist as fields on that model, or (False, 0.0).
+
+        :param prefer: model kept when it matches as many headers as the best
+            candidate (e.g. ``name,country_id`` fits contacts and states equally:
+            keep contacts, the default target, instead of the smaller model).
         """
         names = []
         for header in headers:
@@ -86,6 +90,8 @@ class FieldCatalog:
         for model_name, matched in hits.items():
             if model_name not in env or env[model_name]._abstract:
                 continue
+            if not env[model_name]._auto:
+                continue  # SQL views (reports such as sale.report) cannot receive rows
             if model_name.startswith(('ir.', 'base.', 'bus.', 'mail.', 'res.config')):
                 continue
             # The first column of a template is normally the record name: weigh it more
@@ -98,7 +104,9 @@ class FieldCatalog:
         if not candidates:
             return False, 0.0
         candidates.sort(reverse=True)
-        _weight, _size, count, model_name = candidates[0]
+        best_weight = candidates[0][0]
+        preferred = [c for c in candidates if c[3] == prefer and c[0] == best_weight]
+        _weight, _size, count, model_name = (preferred or candidates)[0]
         score = count / len(names)
         if count < 2 or score < 0.3:
             return False, score
