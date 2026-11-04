@@ -44,10 +44,12 @@
         <field name="arch" type="xml">
             <form>
                 <header>
+                    <button name="action_load_file" string="Cargar archivo" type="object" class="btn-primary"
+                            icon="fa-upload" invisible="state != 'draft' or sheet_ids"/>
                     <button name="action_ai_prepare_and_upload_template" string="🤖 Preparar y Subir Plantilla con IA" type="object" class="btn-primary"
-                            invisible="state != 'draft' or not id"/>
+                            invisible="state != 'draft' or not sheet_ids"/>
                     <button name="action_analyze" string="Analizar (Local / Caché)" type="object" class="btn-secondary"
-                            invisible="state != 'draft' or not id"/>
+                            invisible="state != 'draft' or not sheet_ids"/>
                     <button name="action_ai_prepare_and_upload_template" string="🤖 Re-analizar y Actualizar Plantilla con IA" type="object" class="btn-secondary"
                             invisible="state != 'mapped'"/>
                     <button name="action_save_as_template" string="Guardar como Plantilla" type="object" class="btn-secondary"
@@ -64,8 +66,9 @@
                             <field name="name"/>
                         </h1>
                     </div>
-                    <div class="alert alert-info" role="status" invisible="id">
-                        Sube el archivo y guarda: el sistema leerá las hojas del libro y detectará el modelo de Odoo automáticamente.
+                    <div class="alert alert-info" role="status" invisible="state != 'draft' or sheet_ids">
+                        <strong>Paso 1:</strong> selecciona tu archivo CSV o Excel y pulsa <strong>Cargar archivo</strong>.
+                        El sistema leerá las hojas del libro y detectará el modelo de Odoo automáticamente.
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="not model_detection_note or state != 'draft'">
                         <field name="model_detection_note" readonly="1" nolabel="1"/>

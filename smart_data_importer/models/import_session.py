@@ -173,6 +173,34 @@ class ImportSession(models.Model):
             ) % self.sheet_id.name
         self.with_context(smart_importer_skip_sync=True).write(vals)
 
+    @api.onchange('file')
+    def _onchange_file_reset_sheets(self):
+        """A new file invalidates the sheets read from the previous one,
+        so the 'Cargar archivo' button shows up again."""
+        if self.state == 'draft':
+            self.sheet_id = False
+            self.sheet_ids = [(5, 0, 0)]
+
+    def action_load_file(self):
+        """'Cargar archivo' button: the client saves the record before calling
+        this method, so the file is stored and its sheets are read here."""
+        self.ensure_one()
+        if not self.file:
+            raise UserError(_("Selecciona primero un archivo CSV o Excel."))
+        if not self.sheet_ids:
+            self._sync_sheets()
+        if self.sheet_id and self.target_model_id and not self.model_detection_note:
+            message = _("Archivo cargado. Hoja '%s' lista para importar en '%s'. Ahora pulsa 'Analizar' o 'Preparar con IA'.") % (
+                self.sheet_id.name, self.target_model_id.name)
+            ntype = 'success'
+        elif self.sheet_id:
+            message = _("Archivo cargado, pero no se pudo detectar el modelo destino. Elígelo en el campo 'Target Model' antes de analizar.")
+            ntype = 'warning'
+        else:
+            message = _("Archivo cargado, pero no tiene ninguna hoja con datos para importar.")
+            ntype = 'warning'
+        return self._notify(_('Archivo cargado'), message, ntype)
+
     @api.onchange('target_model_id')
     def _onchange_target_model_id(self):
         if self.target_model_id:
