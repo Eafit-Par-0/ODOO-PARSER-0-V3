@@ -19,6 +19,17 @@
                             <field name="smart_data_importer_chunk_size"/>
                         </setting>
                     </block>
+                    <block title="Value Correction" name="smart_importer_value_correction">
+                        <setting string="Suggestion Threshold" help="Minimum similarity (0-100) to suggest a correction for a value that does not exist in Odoo.">
+                            <field name="smart_data_importer_value_fuzzy_threshold"/>
+                        </setting>
+                        <setting string="Bulk Accept Threshold" help="Minimum similarity (0-100) for the 'Accept safe suggestions' button. Ambiguous suggestions are never accepted in bulk.">
+                            <field name="smart_data_importer_value_bulk_accept_threshold"/>
+                        </setting>
+                        <setting string="Max Candidates" help="Related models with more records than this are not searched for similar values.">
+                            <field name="smart_data_importer_value_fuzzy_max_candidates"/>
+                        </setting>
+                    </block>
                     <block title="AI Universal Assistant (DeepSeek, Claude, Gemini, GPT)" name="smart_importer_llm">
                         <setting string="Enable AI Engine" help="Enables AI to analyze spreadsheets, auto-generate templates, suggest mappings and normalization rules.">
                             <field name="smart_data_importer_llm_enabled"/>

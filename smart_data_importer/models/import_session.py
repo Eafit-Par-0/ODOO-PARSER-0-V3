@@ -60,6 +60,24 @@ class ImportSession(models.Model):
         string='Empty required cells', compute='_compute_required_missing',
         help="Cells left empty in columns that the template marks as required.")
 
+    value_correction_ids = fields.One2many('import.value.correction', 'session_id', string='Values to review')
+    value_issue_pending_count = fields.Integer(
+        string='Pending values', compute='_compute_value_counts',
+        help="Values that do not exist in Odoo and still have no decision.")
+    value_memory_applied_count = fields.Integer(
+        string='Values from memory', compute='_compute_value_counts')
+    value_overflow_count = fields.Integer(
+        string='Columns with too many unknown values', compute='_compute_value_counts')
+
+    @api.depends('value_correction_ids.decision', 'value_correction_ids.source',
+                 'column_mapping_ids.value_issue_overflow')
+    def _compute_value_counts(self):
+        for rec in self:
+            corrections = rec.value_correction_ids
+            rec.value_issue_pending_count = len(corrections.filtered(lambda c: c.decision == 'pending'))
+            rec.value_memory_applied_count = len(corrections.filtered(lambda c: c.source == 'memory'))
+            rec.value_overflow_count = len(rec.column_mapping_ids.filtered('value_issue_overflow'))
+
     @api.depends('column_mapping_ids.empty_count', 'column_mapping_ids.required_level', 'column_mapping_ids.is_ignored')
     def _compute_required_missing(self):
         for rec in self:
@@ -86,6 +104,10 @@ class ImportSession(models.Model):
         res = super().write(vals)
         if self.env.context.get('smart_importer_skip_sync'):
             return res
+        if 'column_mapping_ids' in vals:
+            # after ALL x2many commands of the save (mapping and correction rows) are applied
+            for rec in self.filtered(lambda r: r.state == 'mapped'):
+                rec._validate_values()
         if 'file' in vals or 'filename' in vals:
             for rec in self.filtered('file'):
                 rec._sync_sheets()
@@ -224,6 +246,7 @@ class ImportSession(models.Model):
             raise ValidationError(_("Please select a template to apply."))
         self._apply_template_lines(self.template_id)
         self._compute_file_duplicates()
+        self._validate_values()
         return True
 
     def action_save_as_template(self):
@@ -270,6 +293,7 @@ class ImportSession(models.Model):
         PipelineOrchestrator.run_premapping(self)
         self.dropped_rows = self.sheet_id.dropped_rows
         self._compute_file_duplicates()
+        self._validate_values()
         return True
 
     def action_ai_prepare_and_upload_template(self):
@@ -375,6 +399,7 @@ class ImportSession(models.Model):
             'state': 'mapped',
         })
         self._compute_file_duplicates()
+        self._validate_values()
 
         mapped_count = len(mappings.filtered(lambda m: m.target_field_id and not m.is_ignored))
         return self._notify(
@@ -387,6 +412,15 @@ class ImportSession(models.Model):
         self.ensure_one()
         if self.state != 'mapped':
             raise ValidationError(_("Cannot confirm mapping in current state."))
+        self._validate_values()
+        pending = self.value_issue_pending_count
+        if pending:
+            raise UserError(_(
+                "There are %s values that do not exist in Odoo and have no decision yet. "
+                "Review them in the 'Valores a revisar' tab (accept a suggestion, type the exact value, or leave empty)."
+            ) % pending)
+        self.env['import.value.memory']._learn_from_corrections(self.value_correction_ids)
+        self._learn_headers()
         if not self.column_mapping_ids.filtered(lambda m: m.target_field_id and not m.is_ignored):
             raise ValidationError(_("No column is mapped to a field. Map at least one column before importing."))
 
@@ -425,6 +459,179 @@ class ImportSession(models.Model):
             else:
                 job.process_chunk()
         return True
+
+    # ------------------------------------------------------------------
+    # Value correction (similarity)
+    # ------------------------------------------------------------------
+
+    def _validate_values(self):
+        """Find the cell values Odoo cannot resolve and sync ``value_correction_ids``.
+
+        Decisions already taken for the same (column, normalized value) are kept.
+        """
+        self.ensure_one()
+        from ..services.value_validator import ValueValidator
+
+        Correction = self.env['import.value.correction']
+        mappings = self.column_mapping_ids.filtered(lambda m: not m.is_ignored and m.target_field_id)
+        if not mappings or not self.file or not self.target_model_id:
+            self.value_correction_ids.unlink()
+            return True
+
+        config = self.env['ir.config_parameter'].sudo()
+        threshold = float(config.get_param('smart_data_importer.value_fuzzy_threshold', '80') or 80)
+        max_candidates = int(config.get_param('smart_data_importer.value_fuzzy_max_candidates', '5000') or 5000)
+
+        plan = [{
+            'column_mapping_id': m.id,
+            'header': m.source_header,
+            'field_name': m.target_field_id.name,
+            'subfield': m.target_subfield or None,
+            'rules': m.cleansing_rule_ids,
+        } for m in mappings]
+        df = self._read_file()['df']
+        validator = ValueValidator(self.env, self.target_model_id.model, threshold=threshold,
+                                   max_candidates=max_candidates,
+                                   memory=self._load_value_memory(mappings))
+        issues, overflow = validator.validate(df, plan)
+
+        signatures = {m.id: self._mapping_signature(m) for m in mappings}
+        existing = {(c.column_mapping_id.id, c.normalized_value, c.mapping_signature): c
+                    for c in self.value_correction_ids}
+        by_mapping = {m.id: m for m in mappings}
+        kept, to_create = set(), []
+        for issue in issues:
+            mapping = by_mapping[issue['column_mapping_id']]
+            vals = self._correction_vals(mapping, issue)
+            vals['mapping_signature'] = signatures[mapping.id]
+            rec = existing.get((mapping.id, issue['normalized_value'], signatures[mapping.id]))
+            if rec:
+                kept.add(rec.id)
+                if rec.decision == 'pending' and issue['decision'] == 'accept':
+                    vals['decision'] = 'accept'
+                rec.write(vals)
+            else:
+                vals.update({
+                    'session_id': self.id,
+                    'column_mapping_id': mapping.id,
+                    'normalized_value': issue['normalized_value'],
+                    'decision': issue['decision'],
+                })
+                to_create.append(vals)
+        self.value_correction_ids.filtered(lambda c: c.id not in kept).unlink()
+        if to_create:
+            Correction.create(to_create)
+        for m in mappings:
+            flag = m.id in overflow
+            if m.value_issue_overflow != flag:
+                m.write({'value_issue_overflow': flag})
+        return True
+
+    def _learn_headers(self):
+        """Remember the headers a person mapped by hand (not template, not the initial suggestion)."""
+        self.ensure_one()
+        Registry = self.env['mapping.registry']
+        for col in self.column_mapping_ids:
+            if (col.is_ignored or not col.target_field_id or col.source == 'template'
+                    or col.target_subfield or col.target_field_id == col.suggested_field_id):
+                continue
+            Registry._learn_header(self.target_model_id, col.source_header, col.target_field_id)
+
+    def _load_value_memory(self, mappings):
+        """Active learned corrections for the mapped fields, as the validator expects them.
+
+        Entries pointing to a record that no longer exists are deactivated.
+        """
+        self.ensure_one()
+        entries = self.env['import.value.memory'].sudo().search(
+            [('field_id', 'in', mappings.target_field_id.ids)])
+        memory = {}
+        for entry in entries:
+            field = entry.field_id
+            if field.ttype == 'selection':
+                key, label = entry.selection_key, entry.target_label
+            else:
+                record = (self.env[field.relation].with_context(active_test=False)
+                          .browse(entry.res_id).exists()) if entry.res_id else None
+                if not record:
+                    entry.active = False
+                    continue
+                key, label = record.id, record.display_name
+            if key:
+                memory[(field.name, entry.normalized_value)] = {'key': key, 'label': label}
+        return memory
+
+    @staticmethod
+    def _mapping_signature(mapping):
+        rules = ','.join(map(str, sorted(mapping.cleansing_rule_ids.ids)))
+        return "%s|%s|%s" % (mapping.target_field_id.id, mapping.target_subfield or '', rules)
+
+    def _correction_vals(self, mapping, issue):
+        """Translate a validator issue into ``import.value.correction`` values."""
+        field = mapping.target_field_id
+        vals = {
+            'original_value': issue['original_value'],
+            'occurrence_count': issue['occurrence_count'],
+            'issue_type': issue['issue_type'],
+            'suggested_label': issue['suggested_label'] or False,
+            'suggested_key': False,
+            'suggested_res_id': 0,
+            'confidence': issue['confidence'],
+            'is_ambiguous': issue['is_ambiguous'],
+            'source': issue['source'],
+        }
+        key = issue['suggested_key']
+        if key is False or key is None:
+            return vals
+        if field.ttype == 'selection':
+            vals['suggested_key'] = str(key)
+            try:
+                model = self.env[self.target_model_id.model]
+                selection = dict(model._fields[field.name]._description_selection(self.env))
+                vals['suggested_label'] = selection.get(key, vals['suggested_label'])
+            except Exception:
+                _logger.debug("Could not read the label of selection option %s", key, exc_info=True)
+        else:
+            vals['suggested_res_id'] = int(key)
+            record = self.env[field.relation].with_context(active_test=False).browse(int(key)).exists()
+            if record:
+                vals['suggested_label'] = record.display_name
+        return vals
+
+    def action_accept_value_suggestions(self):
+        """Accept in bulk the safe suggestions (not ambiguous, high similarity)."""
+        self.ensure_one()
+        threshold = float(self.env['ir.config_parameter'].sudo().get_param(
+            'smart_data_importer.value_bulk_accept_threshold', '90') or 90)
+        safe = self.value_correction_ids.filtered(
+            lambda c: c.decision == 'pending' and not c.is_ambiguous
+            and (c.suggested_key or c.suggested_res_id)
+            and c.confidence * 100 >= threshold)
+        safe.write({'decision': 'accept'})
+        return self._notify(
+            _('Suggestions accepted'),
+            _("%s values were accepted. Review the rest one by one.") % len(safe))
+
+    def _value_overrides(self):
+        """``{(field_name, normalized_value): odoo_value}`` from the user decisions."""
+        self.ensure_one()
+        overrides = {}
+        for rec in self.value_correction_ids:
+            field = rec.field_id
+            key = (field.name, rec.normalized_value)
+            is_selection = field.ttype == 'selection'
+            if rec.decision == 'accept':
+                value = rec.suggested_key if is_selection else rec.suggested_res_id
+            elif rec.decision == 'manual':
+                value = rec.resolved_key if is_selection else rec.resolved_res_id
+            elif rec.decision == 'empty':
+                overrides[key] = False
+                continue
+            else:
+                continue
+            if value:
+                overrides[key] = value
+        return overrides
 
     def _notify(self, title, message, ntype='success'):
         return {

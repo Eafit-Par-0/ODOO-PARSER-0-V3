@@ -1,6 +1,6 @@
 {
     'name': 'Odoo Multi-Format Data Importer',
-    'version': '19.0.1.1.0',
+    'version': '19.0.1.2.0',
     'summary': 'Import Odoo base templates (contacts, accounts, taxes, products...) from CSV/Excel with AI-assisted mapping.',
     'category': 'Productivity',
     'author': 'Team',
@@ -15,6 +15,8 @@
         'views/import_template_views.xml',
         'views/import_session_views.xml',
         'views/res_config_settings_views.xml',
+        'views/import_value_memory_views.xml',
+        'views/mapping_registry_views.xml',
         'views/menus.xml',
     ],
     'assets': {

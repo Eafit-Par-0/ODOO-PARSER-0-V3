@@ -70,6 +70,8 @@ export class PreviewTableWidget extends Component {
                 return "badge bg-info text-dark";
             case "llm":
                 return "badge bg-purple text-white";
+            case "memory":
+                return "badge bg-success text-white";
             case "manual":
                 return "badge bg-secondary text-white";
             default:

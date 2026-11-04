@@ -5,6 +5,8 @@ from . import import_session
 from . import import_session_sheet
 from . import mapping_registry
 from . import import_column_mapping
+from . import import_value_correction
+from . import import_value_memory
 from . import res_config_settings
 from . import import_job
 from . import import_row_error

@@ -18,6 +18,24 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='smart_data_importer.chunk_size',
         default=500
     )
+    smart_data_importer_value_fuzzy_threshold = fields.Integer(
+        string="Value Suggestion Threshold",
+        config_parameter='smart_data_importer.value_fuzzy_threshold',
+        default=80,
+        help="Minimum similarity (0-100) to suggest a correction for a value that does not exist in Odoo."
+    )
+    smart_data_importer_value_bulk_accept_threshold = fields.Integer(
+        string="Bulk Accept Threshold",
+        config_parameter='smart_data_importer.value_bulk_accept_threshold',
+        default=90,
+        help="Minimum similarity (0-100) for the 'Accept safe suggestions' button."
+    )
+    smart_data_importer_value_fuzzy_max_candidates = fields.Integer(
+        string="Max Candidates",
+        config_parameter='smart_data_importer.value_fuzzy_max_candidates',
+        default=5000,
+        help="Related models with more records than this are not searched for similar values."
+    )
 
     smart_data_importer_llm_enabled = fields.Boolean(
         string="Enable AI-Assisted Mapping & Templates",

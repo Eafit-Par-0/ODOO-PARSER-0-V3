@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_import_value_memory_list" model="ir.ui.view">
+        <field name="name">import.value.memory.list</field>
+        <field name="model">import.value.memory</field>
+        <field name="arch" type="xml">
+            <list editable="bottom" create="0" decoration-muted="not active">
+                <field name="field_id" readonly="1"/>
+                <field name="original_value" readonly="1"/>
+                <field name="target_label" readonly="1"/>
+                <field name="usage_count" readonly="1"/>
+                <field name="last_used" readonly="1"/>
+                <field name="learned_by" readonly="1"/>
+                <field name="active" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_import_value_memory_search" model="ir.ui.view">
+        <field name="name">import.value.memory.search</field>
+        <field name="model">import.value.memory</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="original_value"/>
+                <field name="field_id"/>
+                <field name="learned_by"/>
+                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <group>
+                    <filter string="Field" name="group_field" context="{'group_by': 'field_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_import_value_memory" model="ir.actions.act_window">
+        <field name="name">Memoria de valores</field>
+        <field name="res_model">import.value.memory</field>
+        <field name="view_mode">list</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No learned values yet.
+            </p>
+            <p>
+                Corrections accepted when confirming an import are remembered here and reused in later imports.
+            </p>
+        </field>
+    </record>
+</odoo>

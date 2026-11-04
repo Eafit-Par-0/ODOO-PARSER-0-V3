@@ -3,6 +3,7 @@ import logging
 import re
 
 from .file_reader import FileReader
+from .text_utils import normalize_text
 
 _logger = logging.getLogger(__name__)
 
@@ -17,6 +18,19 @@ class ConversionError(ValueError):
     """A cell value cannot be converted to the target field type."""
 
 
+class ValueNotFoundError(ConversionError):
+    """No record / selection option matches the value."""
+
+
+class AmbiguousValueError(ConversionError):
+    """More than one record matches the value exactly."""
+
+
+def split_many2many(text):
+    """Split a many2many cell ("a, b; c") into its non-empty parts."""
+    return [part.strip() for part in re.split(r'[,;]', text or '') if part.strip()]
+
+
 class ValueConverter:
     """Turns cleaned text values into values Odoo can write.
 
@@ -24,8 +38,13 @@ class ValueConverter:
     city or account is searched only once.
     """
 
-    def __init__(self, env, model_name):
+    def __init__(self, env, model_name, overrides=None):
+        """
+        :param overrides: ``{(field_name, normalized_value): odoo_value}`` decided
+            by the user. A value of ``False`` means "leave empty".
+        """
         self.env = env
+        self.overrides = overrides or {}
         self.model_name = model_name
         self.model = env[model_name]
         self._m2o_cache = {}
@@ -62,9 +81,8 @@ class ValueConverter:
         if ftype == 'many2one':
             return self._to_many2one(text, field, subfield)
         if ftype == 'many2many':
-            ids = [self._to_many2one(part.strip(), field, subfield)
-                   for part in re.split(r'[,;]', text) if part.strip()]
-            return [(6, 0, ids)]
+            ids = [self._to_many2one(part, field, subfield) for part in split_many2many(text)]
+            return [(6, 0, [rec_id for rec_id in ids if rec_id is not False])]
         raise ConversionError("El tipo de campo '%s' (%s) todavía no se puede importar." % (ftype, field_name))
 
     # ------------------------------------------------------------------
@@ -115,6 +133,26 @@ class ValueConverter:
         return datetime.datetime.combine(self._to_date(text, field), datetime.time(0, 0))
 
     # ------------------------------------------------------------------
+    def selection_options(self, field_name):
+        """Public: ``{normalized key/label: key}`` of a selection field."""
+        return self._selection_options(self.model._fields[field_name])
+
+    def resolve_single(self, field_name, text, subfield=None):
+        """Resolve ONE value of a selection / many2one / many2many field.
+
+        For many2many ``text`` is a single part (already split).
+        Raises ValueNotFoundError / AmbiguousValueError.
+        """
+        field = self.model._fields.get(field_name)
+        if field is None:
+            raise ConversionError("El campo '%s' no existe en %s." % (field_name, self.model_name))
+        text = str(text).strip()
+        if field.type == 'selection':
+            return self._to_selection(text, field)
+        if field.type in ('many2one', 'many2many'):
+            return self._to_many2one(text, field, subfield)
+        raise ConversionError("El tipo de campo '%s' no admite corrección de valores." % field.type)
+
     def _selection_options(self, field):
         if field.name in self._selection_cache:
             return self._selection_cache[field.name]
@@ -133,12 +171,15 @@ class ValueConverter:
         return options
 
     def _to_selection(self, text, field):
+        override_key = (field.name, normalize_text(text))
+        if override_key in self.overrides:
+            return self.overrides[override_key]
         options = self._selection_options(field)
         key = options.get(FileReader.normalize_header(text))
         if key is not None:
             return key
         labels = sorted({k for k in options.values()})
-        raise ConversionError(
+        raise ValueNotFoundError(
             "Valor '%s' no es una opción válida para %s. Opciones: %s"
             % (text, self._label(field), ', '.join(map(str, labels)))
         )
@@ -146,6 +187,9 @@ class ValueConverter:
     # ------------------------------------------------------------------
     def _to_many2one(self, text, field, subfield=None):
         comodel_name = field.comodel_name
+        override_key = (field.name, normalize_text(text))
+        if override_key in self.overrides:
+            return self.overrides[override_key]
         cache_key = (comodel_name, subfield, text.lower())
         if cache_key in self._m2o_cache:
             return self._m2o_cache[cache_key]
@@ -153,18 +197,18 @@ class ValueConverter:
         if subfield == 'id':
             record = self.env.ref(text, raise_if_not_found=False)
             if not record or record._name != comodel_name:
-                raise ConversionError("No existe el identificador externo '%s' en %s." % (text, comodel_name))
+                raise ValueNotFoundError("No existe el identificador externo '%s' en %s." % (text, comodel_name))
             self._m2o_cache[cache_key] = record.id
             return record.id
 
         comodel = self.env[comodel_name].with_context(active_test=False)
         record = self._find_record(comodel, text)
         if not record:
-            raise ConversionError(
+            raise ValueNotFoundError(
                 "No se encontró '%s' en %s para el campo %s." % (text, comodel._description, self._label(field))
             )
         if len(record) > 1:
-            raise ConversionError(
+            raise AmbiguousValueError(
                 "'%s' es ambiguo en %s (%s coincidencias) para %s."
                 % (text, comodel._description, len(record), self._label(field))
             )

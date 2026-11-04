@@ -10,3 +10,6 @@ access_import_cleansing_rule_line_user,import.cleansing.rule.line.user,model_imp
 access_import_template_user,import.template.user,model_import_template,base.group_user,1,1,1,1
 access_import_template_line_user,import.template.line.user,model_import_template_line,base.group_user,1,1,1,1
 access_import_session_sheet_user,import.session.sheet.user,model_import_session_sheet,base.group_user,1,1,1,1
+access_import_value_correction_user,import.value.correction.user,model_import_value_correction,base.group_user,1,1,1,1
+access_import_value_memory_user,import.value.memory.user,model_import_value_memory,base.group_user,1,0,0,0
+access_import_value_memory_admin,import.value.memory.admin,model_import_value_memory,smart_data_importer.group_smart_importer_admin,1,1,1,1
