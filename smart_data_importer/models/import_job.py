@@ -6,22 +6,22 @@ _logger = logging.getLogger(__name__)
 
 class ImportJob(models.Model):
     _name = 'import.job'
-    _description = 'Import Job Chunk'
+    _description = 'Lote de importación'
     _order = 'create_date asc, chunk_index asc'
 
-    session_id = fields.Many2one('import.session', string='Session', required=True, ondelete='cascade')
-    chunk_index = fields.Integer(string='Chunk Index', required=True)
-    row_from = fields.Integer(string='Row From', required=True)
-    row_to = fields.Integer(string='Row To', required=True)
+    session_id = fields.Many2one('import.session', string='Sesión', required=True, ondelete='cascade')
+    chunk_index = fields.Integer(string='Lote', required=True)
+    row_from = fields.Integer(string='Desde la fila', required=True)
+    row_to = fields.Integer(string='Hasta la fila', required=True)
     state = fields.Selection([
-        ('pending', 'Pending'),
-        ('processing', 'Processing'),
-        ('done', 'Done'),
+        ('pending', 'Pendiente'),
+        ('processing', 'Procesando'),
+        ('done', 'Terminado'),
         ('error', 'Error')
-    ], string='Status', default='pending', required=True)
-    attempts = fields.Integer(string='Attempts', default=0)
-    error_message = fields.Text(string='Error Message')
-    row_error_ids = fields.One2many('import.row.error', 'job_id', string='Row Errors')
+    ], string='Estado', default='pending', required=True)
+    attempts = fields.Integer(string='Intentos', default=0)
+    error_message = fields.Text(string='Mensaje de error')
+    row_error_ids = fields.One2many('import.row.error', 'job_id', string='Errores por fila')
 
     def process_chunk(self):
         """Import the rows [row_from, row_to) of the session sheet into the target model."""

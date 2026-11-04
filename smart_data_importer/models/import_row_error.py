@@ -7,11 +7,11 @@ ERROR_CATEGORIES = [(code, title) for code, (title, _msg, _hint) in CATEGORIES.i
 
 class ImportRowError(models.Model):
     _name = 'import.row.error'
-    _description = 'Import Row Error'
+    _description = 'Error de fila'
     _order = 'column_header, row_number, id'
 
-    job_id = fields.Many2one('import.job', string='Job', required=True, ondelete='cascade')
-    session_id = fields.Many2one('import.session', related='job_id.session_id', store=True, string='Session')
+    job_id = fields.Many2one('import.job', string='Lote', required=True, ondelete='cascade')
+    session_id = fields.Many2one('import.session', related='job_id.session_id', store=True, string='Sesión')
     row_number = fields.Integer(string='Fila')
     raw_data = fields.Text(string='Datos de la fila')
     error_type = fields.Char(string='Tipo técnico')

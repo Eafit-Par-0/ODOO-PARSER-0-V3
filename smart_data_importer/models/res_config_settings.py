@@ -4,76 +4,73 @@ class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
     smart_data_importer_max_file_size_mb = fields.Float(
-        string="Max File Size (MB)",
+        string='Tamaño máximo de archivo (MB)',
         config_parameter='smart_data_importer.max_file_size_mb',
         default=50.0
     )
     smart_data_importer_fuzzy_threshold = fields.Integer(
-        string="Fuzzy Threshold",
+        string='Umbral de similitud',
         config_parameter='smart_data_importer.fuzzy_threshold',
         default=85
     )
     smart_data_importer_chunk_size = fields.Integer(
-        string="Chunk Size",
+        string='Tamaño de lote',
         config_parameter='smart_data_importer.chunk_size',
         default=500
     )
     smart_data_importer_value_fuzzy_threshold = fields.Integer(
-        string="Value Suggestion Threshold",
+        string='Umbral para sugerir valores',
         config_parameter='smart_data_importer.value_fuzzy_threshold',
         default=80,
-        help="Minimum similarity (0-100) to suggest a correction for a value that does not exist in Odoo."
+        help='Similitud mínima (0-100) para sugerir una corrección a un valor que no existe en Odoo.'
     )
     smart_data_importer_value_bulk_accept_threshold = fields.Integer(
-        string="Bulk Accept Threshold",
+        string='Umbral de aceptación masiva',
         config_parameter='smart_data_importer.value_bulk_accept_threshold',
         default=90,
-        help="Minimum similarity (0-100) for the 'Accept safe suggestions' button."
+        help="Similitud mínima (0-100) para el botón 'Aceptar sugerencias seguras'."
     )
     smart_data_importer_value_fuzzy_max_candidates = fields.Integer(
-        string="Max Candidates",
+        string='Máximo de candidatos',
         config_parameter='smart_data_importer.value_fuzzy_max_candidates',
         default=5000,
-        help="Related models with more records than this are not searched for similar values."
+        help='En modelos relacionados con más registros que este número no se buscan valores parecidos.'
     )
 
     smart_data_importer_llm_enabled = fields.Boolean(
-        string="Enable AI-Assisted Mapping & Templates",
+        string='Activar mapeo y plantillas asistidos por IA',
         config_parameter='smart_data_importer.llm_enabled',
         default=False,
-        help="When enabled, AI will analyze spreadsheets, auto-generate templates, suggest mappings and cleansing rules."
+        help='Al activarlo, la IA analiza las hojas, genera plantillas y sugiere mapeos y reglas de limpieza.'
     )
     smart_data_importer_llm_provider = fields.Selection([
         ('deepseek', 'DeepSeek'),
         ('anthropic', 'Anthropic (Claude)'),
         ('gemini', 'Google Gemini'),
         ('openai', 'OpenAI'),
-        ('custom', 'Custom / Local (Ollama, Groq, OpenRouter)'),
-    ], string="AI Provider",
+        ('custom', 'Personalizado / Local (Ollama, Groq, OpenRouter)'),
+    ], string='Proveedor de IA',
         config_parameter='smart_data_importer.llm_provider',
         default='deepseek'
     )
     smart_data_importer_llm_model = fields.Char(
-        string="Model Name",
+        string='Nombre del modelo de IA',
         config_parameter='smart_data_importer.llm_model',
-        help="Leave empty to use the provider default: deepseek-chat, claude-haiku-5-5, "
-             "gemini-3.5-flash-lite, gpt-4o-mini, llama3."
+        help='Déjalo vacío para usar el modelo por defecto del proveedor: deepseek-chat, claude-haiku-5-5, gemini-3.5-flash-lite, gpt-4o-mini, llama3.'
     )
     smart_data_importer_llm_api_key = fields.Char(
-        string="API Key",
+        string='Clave de API',
         config_parameter='smart_data_importer.llm_api_key'
     )
     smart_data_importer_llm_base_url = fields.Char(
-        string="Custom Base URL / Endpoint",
+        string='URL base personalizada',
         config_parameter='smart_data_importer.llm_base_url',
-        help="Base URL of an OpenAI-compatible server, e.g. http://localhost:11434/v1 or "
-             "https://api.groq.com/openai/v1. '/chat/completions' is added automatically."
+        help="URL base de un servidor compatible con OpenAI, ej. http://localhost:11434/v1 o https://api.groq.com/openai/v1. '/chat/completions' se agrega automáticamente."
     )
     smart_data_importer_llm_send_samples = fields.Boolean(
-        string="Send sample values to the AI",
+        string='Enviar valores de ejemplo a la IA',
         default=True,
-        help="When disabled, only column headers are sent to the AI provider, never cell values "
-             "(useful when files contain personal data)."
+        help='Si está desactivado, a la IA solo se envían los encabezados, nunca el contenido de las celdas (útil cuando hay datos personales).'
     )
 
     @api.model

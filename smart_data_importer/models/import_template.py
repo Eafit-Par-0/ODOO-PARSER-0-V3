@@ -7,23 +7,23 @@ class ImportTemplate(models.Model):
         'import.deduplication.mixin',
         'import.signature.mixin'
     ]
-    _description = 'Reusable Import Template'
+    _description = 'Plantilla de importación'
     _order = 'create_date desc'
 
-    name = fields.Char(string='Template Name', required=True)
-    active = fields.Boolean(string='Active', default=True)
-    description = fields.Text(string='Description / Source Notes')
+    name = fields.Char(string='Nombre de la plantilla', required=True)
+    active = fields.Boolean(string='Activo', default=True)
+    description = fields.Text(string='Descripción / notas de origen')
 
     model_id = fields.Many2one(
         'ir.model',
-        string='Target Model',
+        string='Modelo destino',
         required=True,
         ondelete='cascade',
         default=lambda self: self.env['ir.model'].search([('model', '=', 'res.partner')], limit=1)
     )
 
-    line_ids = fields.One2many('import.template.line', 'template_id', string='Template Columns', copy=True)
-    line_count = fields.Integer(string='Columns Count', compute='_compute_line_count')
+    line_ids = fields.One2many('import.template.line', 'template_id', string='Columnas de la plantilla', copy=True)
+    line_count = fields.Integer(string='Número de columnas', compute='_compute_line_count')
 
     @api.depends('line_ids')
     def _compute_line_count(self):
@@ -74,14 +74,14 @@ class ImportTemplate(models.Model):
 
 class ImportTemplateLine(models.Model):
     _name = 'import.template.line'
-    _description = 'Import Template Column Line'
+    _description = 'Columna de plantilla'
     _order = 'sequence, id'
 
-    template_id = fields.Many2one('import.template', string='Template', required=True, ondelete='cascade')
-    sequence = fields.Integer(string='Sequence', default=10)
-    source_header = fields.Char(string='Original File Header', required=True)
+    template_id = fields.Many2one('import.template', string='Plantilla', required=True, ondelete='cascade')
+    sequence = fields.Integer(string='Secuencia', default=10)
+    source_header = fields.Char(string='Encabezado del archivo', required=True)
     # The domain is set in the view from the template's model
-    target_field_id = fields.Many2one('ir.model.fields', string='Target Field', ondelete='cascade')
-    target_subfield = fields.Char(string='Sub-field')
-    cleansing_rule_ids = fields.Many2many('import.cleansing.rule', string='Cleansing Rules')
-    is_ignored = fields.Boolean(string='Ignore Column', default=False)
+    target_field_id = fields.Many2one('ir.model.fields', string='Campo destino', ondelete='cascade')
+    target_subfield = fields.Char(string='Subcampo')
+    cleansing_rule_ids = fields.Many2many('import.cleansing.rule', string='Reglas de limpieza')
+    is_ignored = fields.Boolean(string='Ignorar columna', default=False)

@@ -2,16 +2,16 @@
 <odoo>
     <!-- Action -->
     <record id="action_import_cleansing_rule" model="ir.actions.act_window">
-        <field name="name">Cleansing Rules</field>
+        <field name="name">Reglas de limpieza</field>
         <field name="res_model">import.cleansing.rule</field>
         <field name="view_mode">list,form</field>
         <field name="context">{'search_default_group_by_category': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Define a new data cleansing and normalization rule.
+                Crea una nueva regla de limpieza y normalización de datos.
             </p>
             <p>
-                Configure transformations (text cleanup, value mappings, date/number formatting, phone/email normalizers) and test them in real-time with the interactive Sandbox.
+                Configura transformaciones (limpieza de texto, equivalencias, formato de fechas y números, teléfonos y correos) y pruébalas en tiempo real en la zona de pruebas.
             </p>
         </field>
     </record>
@@ -44,29 +44,29 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_test_rule" string="⚡ Test Rule Live" type="object" class="btn-secondary"/>
+                    <button name="action_test_rule" string="⚡ Probar regla" type="object" class="btn-secondary"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only"/>
                         <h1>
-                            <field name="name" placeholder="e.g. Normalize Mobile Number / Capitalize City"/>
+                            <field name="name" placeholder="ej. Normalizar celular / Ciudad en mayúscula inicial"/>
                         </h1>
                     </div>
 
                     <group>
-                        <group string="Configuration">
+                        <group string="Configuración">
                             <field name="category" widget="radio" options="{'horizontal': true}"/>
                             <field name="action_type"/>
                             <field name="sequence"/>
                             <field name="active"/>
                         </group>
 
-                        <group string="🧪 Interactive Live Sandbox">
+                        <group string="🧪 Zona de pruebas">
                             <div class="alert alert-info py-2" role="status">
-                                <strong>Live Sandbox:</strong> Type sample input below to see how this rule transforms data in real time.
+                                <strong>Zona de pruebas:</strong> Escribe un valor de ejemplo para ver cómo lo transforma esta regla.
                             </div>
-                            <field name="test_input" placeholder="Type sample data here (e.g. +57 300 123 4567)"/>
+                            <field name="test_input" placeholder="Escribe un dato de ejemplo (ej. +57 300 123 4567)"/>
                             <field name="test_output" class="fw-bold text-success" readonly="1" force_save="1"/>
                         </group>
                     </group>
@@ -74,90 +74,90 @@
                     <!-- Contextual Settings based on action_type -->
                     <notebook>
                         <!-- Find & Replace Settings -->
-                        <page name="page_find_replace" string="Find &amp; Replace" invisible="action_type != 'find_replace'">
+                        <page name="page_find_replace" string="Buscar y reemplazar" invisible="action_type != 'find_replace'">
                             <group>
                                 <group>
-                                    <field name="find_text" placeholder="e.g. Ltd."/>
-                                    <field name="replace_text" placeholder="e.g. Limited"/>
+                                    <field name="find_text" placeholder="ej. Ltda."/>
+                                    <field name="replace_text" placeholder="ej. Limitada"/>
                                     <field name="case_sensitive"/>
                                 </group>
                             </group>
                         </page>
 
                         <!-- Prefix & Suffix Settings -->
-                        <page name="page_prefix_suffix" string="Prefix &amp; Suffix" invisible="action_type != 'prefix_suffix'">
+                        <page name="page_prefix_suffix" string="Prefijo y sufijo" invisible="action_type != 'prefix_suffix'">
                             <group>
-                                <group string="Prefix">
+                                <group string="Prefijo">
                                     <field name="prefix_text" placeholder="e.g. +57"/>
                                     <field name="remove_prefix"/>
                                 </group>
-                                <group string="Suffix">
-                                    <field name="suffix_text" placeholder="e.g. -CO"/>
+                                <group string="Sufijo">
+                                    <field name="suffix_text" placeholder="ej. -CO"/>
                                     <field name="remove_suffix"/>
                                 </group>
                             </group>
                         </page>
 
                         <!-- Value Mapping Dictionary -->
-                        <page name="page_value_mapping" string="Value Mapping Table" invisible="action_type != 'value_mapping'">
+                        <page name="page_value_mapping" string="Tabla de equivalencias" invisible="action_type != 'value_mapping'">
                             <p class="text-muted">
-                                Map specific incoming values to standard target values (e.g. M → Masculino, F → Femenino, COL → Colombia).
+                                Convierte valores del archivo en valores estándar (ej. M → Masculino, F → Femenino, COL → Colombia).
                             </p>
                             <field name="line_ids">
                                 <list editable="bottom">
                                     <field name="sequence" widget="handle"/>
-                                    <field name="source_value" placeholder="e.g. BOG"/>
+                                    <field name="source_value" placeholder="ej. BOG"/>
                                     <field name="target_value" placeholder="e.g. Bogotá D.C."/>
                                 </list>
                             </field>
                         </page>
 
                         <!-- Default Value Fallback -->
-                        <page name="page_default_value" string="Default Value" invisible="action_type != 'default_value'">
+                        <page name="page_default_value" string="Valor por defecto" invisible="action_type != 'default_value'">
                             <group>
-                                <field name="default_value" placeholder="e.g. Colombia / Consumidor Final"/>
+                                <field name="default_value" placeholder="ej. Colombia / Consumidor Final"/>
                             </group>
                         </page>
 
                         <!-- Number & Currency Clean -->
-                        <page name="page_number" string="Number / Currency Notation" invisible="action_type != 'number_clean'">
+                        <page name="page_number" string="Formato de número / moneda" invisible="action_type != 'number_clean'">
                             <group>
                                 <field name="decimal_separator"/>
                             </group>
                             <p class="text-muted">
-                                Strips currency symbols ($, €, £, COP, USD) and standardizes formatting to decimal numbers (e.g. 1.250.000,50 → 1250000.50).
+                                Quita símbolos de moneda ($, €, £, COP, USD) y deja el número en formato decimal (ej. 1.250.000,50 → 1250000.50).
                             </p>
                         </page>
 
                         <!-- Date Formatting -->
-                        <page name="page_date" string="Date Formatting" invisible="action_type != 'date_format'">
+                        <page name="page_date" string="Formato de fecha" invisible="action_type != 'date_format'">
                             <group>
                                 <field name="date_input_format"/>
                             </group>
                             <p class="text-muted">
-                                Automatically converts dates to the Odoo ISO format (YYYY-MM-DD).
+                                Convierte las fechas al formato ISO de Odoo (AAAA-MM-DD).
                             </p>
                         </page>
 
                         <!-- Custom Regex -->
-                        <page name="page_regex" string="Regex Expression" invisible="action_type != 'regex'">
+                        <page name="page_regex" string="Expresión regular" invisible="action_type != 'regex'">
                             <group>
-                                <field name="regex_pattern" placeholder="e.g. [^0-9A-Za-z]"/>
-                                <field name="regex_replacement" placeholder="e.g. empty string"/>
+                                <field name="regex_pattern" placeholder="ej. [^0-9A-Za-z]"/>
+                                <field name="regex_replacement" placeholder="ej. texto vacío"/>
                             </group>
                         </page>
 
                         <!-- Custom Python Code -->
-                        <page name="page_python" string="Python Code (Safe Eval)" invisible="action_type != 'python_code'">
+                        <page name="page_python" string="Código Python (evaluación segura)" invisible="action_type != 'python_code'">
                             <div class="alert alert-warning py-2" role="status">
-                                <strong>Advanced:</strong> Execute custom Python expressions. Use variable <code>value</code> for input and assign output to <code>result</code>.
+                                <strong>Avanzado:</strong> Ejecuta expresiones Python propias. Usa la variable <code>value</code> como entrada y asigna el resultado a <code>result</code>.
                             </div>
                             <field name="python_code" widget="ace" options="{'mode': 'python'}"/>
                         </page>
 
                         <!-- Description & Notes -->
-                        <page name="page_description" string="Documentation &amp; Notes">
-                            <field name="description" placeholder="Describe the purpose, source systems, or business rationale for this rule..."/>
+                        <page name="page_description" string="Documentación y notas">
+                            <field name="description" placeholder="Describe el propósito, el sistema de origen o la razón de negocio de esta regla..."/>
                         </page>
                     </notebook>
                 </sheet>
@@ -174,12 +174,12 @@
                 <field name="name"/>
                 <field name="action_type"/>
                 <field name="category"/>
-                <filter string="Active" name="active" domain="[('active', '=', True)]"/>
-                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="Activas" name="active" domain="[('active', '=', True)]"/>
+                <filter string="Archivadas" name="inactive" domain="[('active', '=', False)]"/>
                 <separator/>
                 <group>
-                    <filter string="Category" name="group_by_category" context="{'group_by': 'category'}"/>
-                    <filter string="Action Type" name="group_by_action_type" context="{'group_by': 'action_type'}"/>
+                    <filter string="Categoría" name="group_by_category" context="{'group_by': 'category'}"/>
+                    <filter string="Tipo de acción" name="group_by_action_type" context="{'group_by': 'action_type'}"/>
                 </group>
             </search>
         </field>

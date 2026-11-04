@@ -7,15 +7,15 @@ class ImportErrorSummary(models.Model):
     """One line per (column, kind of problem) so the user sees *what* to fix
     in *which* column instead of a long list of row errors."""
     _name = 'import.error.summary'
-    _description = 'Import Errors Grouped by Column'
+    _description = 'Errores agrupados por columna'
     _order = 'stage, sequence, id'
 
-    session_id = fields.Many2one('import.session', required=True, ondelete='cascade', index=True)
+    session_id = fields.Many2one('import.session', string='Sesión', required=True, ondelete='cascade', index=True)
     stage = fields.Selection([
         ('precheck', 'Antes de importar'),
         ('import', 'Durante la importación'),
     ], string='Etapa', required=True, default='precheck')
-    sequence = fields.Integer(default=10)
+    sequence = fields.Integer(string='Secuencia', default=10)
 
     column_header = fields.Char(string='Columna', required=True)
     field_label = fields.Char(string='Campo de Odoo')

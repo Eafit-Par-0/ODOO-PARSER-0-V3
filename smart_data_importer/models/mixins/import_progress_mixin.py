@@ -2,21 +2,21 @@ from odoo import models, fields, api, _
 
 class ImportProgressMixin(models.AbstractModel):
     _name = 'import.progress.mixin'
-    _description = 'Import Execution & Progress Tracking Mixin'
+    _description = 'Seguimiento de ejecución y progreso de importación'
 
-    start_time = fields.Datetime(string='Start Time', readonly=True)
-    end_time = fields.Datetime(string='End Time', readonly=True)
+    start_time = fields.Datetime(string='Inicio', readonly=True)
+    end_time = fields.Datetime(string='Fin', readonly=True)
     
-    processed_rows = fields.Integer(string='Processed Rows', readonly=True, default=0,
-                                    help="Rows handled so far: created + updated + skipped + failed.")
-    created_rows = fields.Integer(string='Created Rows', readonly=True, default=0)
-    updated_rows = fields.Integer(string='Updated Rows', readonly=True, default=0)
-    skipped_rows = fields.Integer(string='Skipped Rows', readonly=True, default=0)
-    failed_rows = fields.Integer(string='Failed Rows', readonly=True, default=0)
+    processed_rows = fields.Integer(string='Filas procesadas', readonly=True, default=0,
+                                    help='Filas procesadas hasta ahora: creadas + actualizadas + omitidas + fallidas.')
+    created_rows = fields.Integer(string='Filas creadas', readonly=True, default=0)
+    updated_rows = fields.Integer(string='Filas actualizadas', readonly=True, default=0)
+    skipped_rows = fields.Integer(string='Filas omitidas', readonly=True, default=0)
+    failed_rows = fields.Integer(string='Filas fallidas', readonly=True, default=0)
 
-    progress_percent = fields.Float(string='Progress (%)', compute='_compute_progress_metrics')
-    duration_seconds = fields.Float(string='Duration (s)', compute='_compute_progress_metrics')
-    speed_rows_per_sec = fields.Float(string='Speed (rows/s)', compute='_compute_progress_metrics')
+    progress_percent = fields.Float(string='Progreso (%)', compute='_compute_progress_metrics')
+    duration_seconds = fields.Float(string='Duración (s)', compute='_compute_progress_metrics')
+    speed_rows_per_sec = fields.Float(string='Velocidad (filas/s)', compute='_compute_progress_metrics')
 
     @api.depends('processed_rows', 'total_rows', 'start_time', 'end_time')
     def _compute_progress_metrics(self):

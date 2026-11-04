@@ -6,9 +6,9 @@
             <t t-if="state.loading">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading dashboard...</span>
+                        <span class="visually-hidden">Cargando tablero...</span>
                     </div>
-                    <p class="text-muted mt-2">Loading data preview and quality metrics...</p>
+                    <p class="text-muted mt-2">Cargando vista previa y métricas de calidad...</p>
                 </div>
             </t>
 
@@ -24,7 +24,7 @@
             <t t-elif="!state.summary.raw_rows or state.summary.raw_rows.length === 0">
                 <div class="text-center py-4 text-muted">
                     <i class="fa fa-file-text-o fa-2x mb-2"/>
-                    <p class="mb-0">No data available for preview. Please analyze the file first.</p>
+                    <p class="mb-0">No hay datos para la vista previa. Primero analiza el archivo.</p>
                 </div>
             </t>
 
@@ -35,7 +35,7 @@
                     <div class="col-6 col-md-3">
                         <div class="card bg-light border-0 h-100">
                             <div class="card-body p-2 text-center">
-                                <span class="text-muted small d-block">Total Rows</span>
+                                <span class="text-muted small d-block">Total de filas</span>
                                 <span class="fs-5 fw-bold text-primary"><t t-esc="state.summary.total_rows"/></span>
                             </div>
                         </div>
@@ -43,7 +43,7 @@
                     <div class="col-6 col-md-3">
                         <div class="card bg-light border-0 h-100">
                             <div class="card-body p-2 text-center">
-                                <span class="text-muted small d-block">Mapped Columns</span>
+                                <span class="text-muted small d-block">Columnas mapeadas</span>
                                 <span class="fs-5 fw-bold text-success">
                                     <t t-esc="state.summary.metrics.mapped_columns"/> / <t t-esc="state.summary.metrics.total_columns"/>
                                 </span>
@@ -53,7 +53,7 @@
                     <div class="col-6 col-md-3">
                         <div class="card bg-light border-0 h-100">
                             <div class="card-body p-2 text-center">
-                                <span class="text-muted small d-block">Duplicates in File</span>
+                                <span class="text-muted small d-block">Duplicados en el archivo</span>
                                 <span t-attf-class="fs-5 fw-bold {{ state.summary.metrics.duplicate_file > 0 ? 'text-warning' : 'text-success' }}">
                                     <t t-esc="state.summary.metrics.duplicate_file"/>
                                 </span>
@@ -63,7 +63,7 @@
                     <div class="col-6 col-md-3">
                         <div class="card bg-light border-0 h-100">
                             <div class="card-body p-2 text-center">
-                                <span class="text-muted small d-block">Avg Confidence</span>
+                                <span class="text-muted small d-block">Confianza promedio</span>
                                 <span t-attf-class="fs-5 fw-bold {{ state.summary.metrics.avg_confidence >= 80 ? 'text-success' : (state.summary.metrics.avg_confidence >= 50 ? 'text-warning' : 'text-danger') }}">
                                     <t t-esc="state.summary.metrics.avg_confidence"/>%
                                 </span>
@@ -78,22 +78,22 @@
                         <button type="button" 
                                 t-attf-class="btn {{ state.viewMode === 'transformed' ? 'btn-primary' : 'btn-outline-secondary' }}"
                                 t-on-click="() => this.setViewMode('transformed')">
-                            <i class="fa fa-magic me-1"/> Transformed Clean Data
+                            <i class="fa fa-magic me-1"/> Datos limpios
                         </button>
                         <button type="button" 
                                 t-attf-class="btn {{ state.viewMode === 'side_by_side' ? 'btn-primary' : 'btn-outline-secondary' }}"
                                 t-on-click="() => this.setViewMode('side_by_side')">
-                            <i class="fa fa-columns me-1"/> Side-by-Side Comparison
+                            <i class="fa fa-columns me-1"/> Comparación lado a lado
                         </button>
                         <button type="button" 
                                 t-attf-class="btn {{ state.viewMode === 'raw' ? 'btn-primary' : 'btn-outline-secondary' }}"
                                 t-on-click="() => this.setViewMode('raw')">
-                            <i class="fa fa-file-text-o me-1"/> Raw File Data
+                            <i class="fa fa-file-text-o me-1"/> Datos originales
                         </button>
                     </div>
 
-                    <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="loadDashboard" title="Refresh Preview">
-                        <i class="fa fa-refresh me-1"/> Refresh
+                    <button type="button" class="btn btn-sm btn-outline-primary" t-on-click="loadDashboard" title="Actualizar vista previa">
+                        <i class="fa fa-refresh me-1"/> Actualizar
                     </button>
                 </div>
 
@@ -119,7 +119,7 @@
                                                 <t t-if="col.rules_count > 0">
                                                     <div class="mt-1">
                                                         <span class="badge bg-secondary" t-att-title="col.rule_names.join(', ')">
-                                                            <i class="fa fa-filter me-1"/><t t-esc="col.rules_count"/> Rules
+                                                            <i class="fa fa-filter me-1"/><t t-esc="col.rules_count"/> Reglas
                                                         </span>
                                                     </div>
                                                 </t>
@@ -138,7 +138,7 @@
                                                     <t t-if="row[col.header]">
                                                         <span t-esc="row[col.header].value"/>
                                                         <t t-if="row[col.header].is_modified">
-                                                            <i class="fa fa-check-circle text-success ms-1 small" title="Cleaned / Transformed by rule"/>
+                                                            <i class="fa fa-check-circle text-success ms-1 small" title="Limpiado / transformado por una regla"/>
                                                         </t>
                                                     </t>
                                                 </td>
@@ -155,7 +155,7 @@
                 <t t-elif="state.viewMode === 'side_by_side'">
                     <div class="alert alert-info py-2 small mb-2">
                         <i class="fa fa-info-circle me-1"/> 
-                        Comparing <strong>Original (Raw)</strong> vs <strong>Transformed (Clean)</strong> data. Modified values are highlighted.
+                        Comparando los datos <strong>Original</strong> vs <strong>Limpio</strong>. Los valores modificados aparecen resaltados.
                     </div>
                     <div class="table-responsive" style="max-height: 420px;">
                         <table class="table table-sm table-bordered align-middle mb-0">
@@ -175,8 +175,8 @@
                                     <th></th>
                                     <t t-foreach="state.summary.columns" t-as="col" t-key="col.id">
                                         <t t-if="!col.is_ignored">
-                                            <th class="border-start text-muted" style="width: 140px;">Raw</th>
-                                            <th class="text-success fw-bold" style="width: 140px;">Clean</th>
+                                            <th class="border-start text-muted" style="width: 140px;">Original</th>
+                                            <th class="text-success fw-bold" style="width: 140px;">Limpio</th>
                                         </t>
                                     </t>
                                 </tr>

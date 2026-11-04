@@ -2,16 +2,15 @@
 <odoo>
     <!-- Action -->
     <record id="action_import_session" model="ir.actions.act_window">
-        <field name="name">Import Sessions</field>
+        <field name="name">Sesiones de importación</field>
         <field name="res_model">import.session</field>
         <field name="view_mode">list,form</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                Create a new import session.
+                Crea una nueva sesión de importación.
             </p>
             <p>
-                Upload a CSV or Excel file. Workbooks with several sheets (instructions, possible values, data)
-                are supported: choose the sheet and the Odoo model to import into.
+                Sube un archivo CSV o Excel. Se admiten libros con varias hojas (instrucciones, posibles valores, datos): elige la hoja y el modelo de Odoo en el que vas a importar.
             </p>
         </field>
     </record>
@@ -44,7 +43,7 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_load_file" string="Cargar archivo" type="object" class="btn-primary"
+                    <button name="action_load_file" string="Procesar archivo" type="object" class="btn-primary"
                             icon="fa-upload" invisible="state != 'draft' or sheet_ids"/>
                     <button name="action_ai_prepare_and_upload_template" string="🤖 Preparar y Subir Plantilla con IA" type="object" class="btn-primary"
                             invisible="state != 'draft' or not sheet_ids"/>
@@ -67,7 +66,7 @@
                         </h1>
                     </div>
                     <div class="alert alert-info" role="status" invisible="state != 'draft' or sheet_ids">
-                        <strong>Paso 1:</strong> selecciona tu archivo CSV o Excel y pulsa <strong>Cargar archivo</strong>.
+                        <strong>Paso 1:</strong> selecciona tu archivo CSV o Excel y pulsa <strong>Procesar archivo</strong>.
                         El sistema leerá las hojas del libro y detectará el modelo de Odoo automáticamente.
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="not model_detection_note or state != 'draft'">
@@ -128,7 +127,7 @@
                         Revisa la pestaña <strong>Errores por columna</strong>: allí dice qué pasó y cómo corregirlo.
                     </div>
                     <group>
-                        <group string="Archivo &amp; Carga">
+                        <group string="Archivo y carga">
                             <field name="filename" invisible="1"/>
                             <field name="file" filename="filename" widget="binary" readonly="state != 'draft'"/>
                             <field name="sheet_id" readonly="state != 'draft'" invisible="not sheet_ids"
@@ -232,10 +231,10 @@
                                 <field name="ai_analysis_summary" widget="text" readonly="1" nolabel="1"/>
                             </div>
                         </page>
-                        <page name="preview" string="📊 Data Preview &amp; Dashboard" invisible="state == 'draft'">
+                        <page name="preview" string="📊 Vista previa y tablero" invisible="state == 'draft'">
                             <field name="preview_data" widget="preview_table" nolabel="1"/>
                         </page>
-                        <page name="jobs" string="Jobs" invisible="state not in ('queued', 'processing', 'done', 'error')">
+                        <page name="jobs" string="Lotes" invisible="state not in ('queued', 'processing', 'done', 'error')">
                             <field name="job_ids" readonly="1">
                                 <list decoration-info="state == 'pending'" decoration-warning="state == 'processing'" decoration-success="state == 'done'" decoration-danger="state == 'error'">
                                     <field name="chunk_index"/>

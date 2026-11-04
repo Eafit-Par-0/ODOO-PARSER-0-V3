@@ -80,13 +80,13 @@ class FileReader:
         workbook = cls._parse(file_base64, filename)
         sheets = workbook['sheets']
         if not sheets:
-            raise UserError(_("The file does not contain any readable sheet."))
+            raise UserError(_('El archivo no tiene ninguna hoja legible.'))
 
         chosen = None
         if sheet_name:
             chosen = next((s for s in sheets if s['name'] == sheet_name), None)
             if chosen is None:
-                raise UserError(_("The sheet '%s' does not exist in this file.") % sheet_name)
+                raise UserError(_("La hoja '%s' no existe en este archivo.") % sheet_name)
         else:
             chosen = cls._default_sheet(sheets)
 
@@ -115,9 +115,9 @@ class FileReader:
     @classmethod
     def _parse(cls, file_base64, filename):
         if not file_base64:
-            raise UserError(_("No file content found."))
+            raise UserError(_('El archivo está vacío.'))
         if not filename:
-            raise UserError(_("The file has no name, so its format cannot be detected."))
+            raise UserError(_('El archivo no tiene nombre, así que no se puede detectar su formato.'))
 
         content = base64.b64decode(file_base64)
         key = (hashlib.sha1(content).hexdigest(), filename.lower())
@@ -133,7 +133,7 @@ class FileReader:
         elif lower.endswith('.xls'):
             result = cls._parse_xls_legacy(content)
         else:
-            raise UserError(_("Unsupported file format. Use CSV or Excel (.xlsx, .xls)."))
+            raise UserError(_('Formato no soportado. Usa CSV o Excel (.xlsx, .xls).'))
 
         _CACHE[key] = result
         if len(_CACHE) > _CACHE_SIZE:
@@ -174,7 +174,7 @@ class FileReader:
                 warnings.simplefilter('ignore')
                 wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
         except Exception as e:
-            raise UserError(_("The Excel file could not be opened: %s") % e)
+            raise UserError(_('No se pudo abrir el archivo de Excel: %s') % e)
 
         legend = cls._read_colour_legend(wb)
         sheets = []
@@ -196,7 +196,7 @@ class FileReader:
         try:
             frames = pd.read_excel(io.BytesIO(content), sheet_name=None, header=None, dtype=object)
         except Exception as e:
-            raise UserError(_("The Excel file could not be opened: %s") % e)
+            raise UserError(_('No se pudo abrir el archivo de Excel: %s') % e)
         sheets = []
         for name, frame in frames.items():
             grid = [[cls._to_text(v) for v in row] for row in frame.itertuples(index=False)]
@@ -242,7 +242,7 @@ class FileReader:
             has_values = any(cell(r, i) is not None for r in body)
             if raw_header is None and not has_values:
                 continue
-            header = raw_header if raw_header is not None else _("Column %s") % (i + 1)
+            header = raw_header if raw_header is not None else _('Columna %s') % (i + 1)
             if header in seen:
                 seen[header] += 1
                 header = "%s (%s)" % (header, seen[header])
@@ -464,7 +464,7 @@ class FileReader:
             if found:
                 return found
         raise UserError(_(
-            "No data sheet was found in this file. Sheets found: %s"
+            'No se encontró ninguna hoja de datos en este archivo. Hojas encontradas: %s'
         ) % ', '.join('%s (%s)' % (s['name'], s['kind']) for s in sheets))
 
     @staticmethod

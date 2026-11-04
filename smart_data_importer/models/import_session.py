@@ -17,57 +17,57 @@ class ImportSession(models.Model):
         'import.progress.mixin',
         'import.signature.mixin'
     ]
-    _description = 'Import Session'
+    _description = 'Sesión de importación'
     _order = 'create_date desc'
 
-    name = fields.Char(string='Name', required=True, copy=False, readonly=True, default=lambda self: _('New'))
+    name = fields.Char(string='Nombre', required=True, copy=False, readonly=True, default=lambda self: _('Nuevo'))
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('analyzing', 'Analyzing'),
-        ('mapped', 'Mapped'),
-        ('queued', 'Queued'),
-        ('processing', 'Processing'),
-        ('done', 'Done'),
+        ('draft', 'Borrador'),
+        ('analyzing', 'Analizando'),
+        ('mapped', 'Mapeado'),
+        ('queued', 'En cola'),
+        ('processing', 'Procesando'),
+        ('done', 'Terminado'),
         ('error', 'Error')
-    ], string='Status', default='draft', required=True, copy=False)
-    user_id = fields.Many2one('res.users', string='User', default=lambda self: self.env.user, required=True)
+    ], string='Estado', default='draft', required=True, copy=False)
+    user_id = fields.Many2one('res.users', string='Usuario', default=lambda self: self.env.user, required=True)
 
     # Workbook / target
-    sheet_ids = fields.One2many('import.session.sheet', 'session_id', string='Sheets', readonly=True)
+    sheet_ids = fields.One2many('import.session.sheet', 'session_id', string='Hojas', readonly=True)
     sheet_id = fields.Many2one(
-        'import.session.sheet', string='Sheet to import',
+        'import.session.sheet', string='Hoja a importar',
         domain="[('session_id', '=', id), ('kind', '=', 'data')]",
-        help="Excel workbooks can contain several sheets. Instructions and 'possible values' sheets are skipped.")
+        help="Un libro de Excel puede tener varias hojas. Las hojas de instrucciones y de 'posibles valores' se omiten.")
     target_model_id = fields.Many2one(
-        'ir.model', string='Target Model', required=True, ondelete='cascade',
+        'ir.model', string='Modelo destino', required=True, ondelete='cascade',
         default=_default_target_model, domain=[('transient', '=', False)],
-        help="Odoo model that will receive the rows. Detected from the column headers when possible.")
-    target_model_name = fields.Char(related='target_model_id.model', string='Target Model Name')
-    model_detection_score = fields.Float(string='Model detection match', readonly=True,
-                                         help="Share of technical column headers that exist on the detected model.")
-    model_detection_note = fields.Char(string='Model detection note', readonly=True)
-    dropped_rows = fields.Integer(string='Discarded empty rows', readonly=True)
+        help='Modelo de Odoo que recibirá las filas. Se detecta a partir de los encabezados cuando es posible.')
+    target_model_name = fields.Char(related='target_model_id.model', string='Nombre técnico del modelo')
+    model_detection_score = fields.Float(string='Coincidencia del modelo detectado', readonly=True,
+                                         help='Porcentaje de encabezados técnicos que existen en el modelo detectado.')
+    model_detection_note = fields.Char(string='Nota de detección del modelo', readonly=True)
+    dropped_rows = fields.Integer(string='Filas vacías descartadas', readonly=True)
 
-    column_mapping_ids = fields.One2many('import.column.mapping', 'session_id', string='Column Mappings')
-    job_ids = fields.One2many('import.job', 'session_id', string='Jobs')
-    row_error_ids = fields.One2many('import.row.error', 'session_id', string='Row Errors')
-    template_id = fields.Many2one('import.template', string='Applied Template')
+    column_mapping_ids = fields.One2many('import.column.mapping', 'session_id', string='Mapeo de columnas')
+    job_ids = fields.One2many('import.job', 'session_id', string='Lotes')
+    row_error_ids = fields.One2many('import.row.error', 'session_id', string='Errores por fila')
+    template_id = fields.Many2one('import.template', string='Plantilla aplicada')
 
-    ai_analysis_summary = fields.Text(string='AI Analysis Summary', readonly=True)
-    ai_template_name = fields.Char(string='AI Suggested Template Name', readonly=True)
+    ai_analysis_summary = fields.Text(string='Resumen del análisis de la IA', readonly=True)
+    ai_template_name = fields.Char(string='Nombre de plantilla sugerido por la IA', readonly=True)
 
     required_missing_count = fields.Integer(
-        string='Empty required cells', compute='_compute_required_missing',
-        help="Cells left empty in columns that the template marks as required.")
+        string='Celdas obligatorias vacías', compute='_compute_required_missing',
+        help='Celdas vacías en columnas que la plantilla marca como obligatorias.')
 
-    value_correction_ids = fields.One2many('import.value.correction', 'session_id', string='Values to review')
+    value_correction_ids = fields.One2many('import.value.correction', 'session_id', string='Valores a revisar')
     value_issue_pending_count = fields.Integer(
-        string='Pending values', compute='_compute_value_counts',
-        help="Values that do not exist in Odoo and still have no decision.")
+        string='Valores pendientes', compute='_compute_value_counts',
+        help='Valores que no existen en Odoo y aún no tienen decisión.')
     value_memory_applied_count = fields.Integer(
-        string='Values from memory', compute='_compute_value_counts')
+        string='Valores tomados de la memoria', compute='_compute_value_counts')
     value_overflow_count = fields.Integer(
-        string='Columns with too many unknown values', compute='_compute_value_counts')
+        string='Columnas con demasiados valores desconocidos', compute='_compute_value_counts')
 
     # Errors grouped by column (PO requirement #1)
     error_summary_ids = fields.One2many('import.error.summary', 'session_id', string='Errores por columna')
@@ -161,8 +161,8 @@ class ImportSession(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('name', _('New')) == _('New'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('import.session') or _('New')
+            if vals.get('name', _('Nuevo')) == _('Nuevo'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('import.session') or _('Nuevo')
         records = super().create(vals_list)
         for rec in records.filtered('file'):
             rec._sync_sheets()
@@ -236,22 +236,20 @@ class ImportSession(models.Model):
             vals['duplicate_criterion'] = 'vat' if model_name == 'res.partner' else 'auto'
         else:
             vals['model_detection_note'] = _(
-                "The target model could not be detected from the headers of sheet '%s'. "
-                "Choose it manually. If the data belongs to an app that is not installed "
-                "(e.g. fixed assets need Accounting Assets), install it first."
+                "No se pudo detectar el modelo destino a partir de los encabezados de la hoja '%s'. Elígelo manualmente. Si los datos pertenecen a una aplicación que no está instalada (ej. los activos fijos necesitan Contabilidad - Activos), instálala primero."
             ) % self.sheet_id.name
         self.with_context(smart_importer_skip_sync=True).write(vals)
 
     @api.onchange('file')
     def _onchange_file_reset_sheets(self):
         """A new file invalidates the sheets read from the previous one,
-        so the 'Cargar archivo' button shows up again."""
+        so the 'Procesar archivo' button shows up again."""
         if self.state == 'draft':
             self.sheet_id = False
             self.sheet_ids = [(5, 0, 0)]
 
     def action_load_file(self):
-        """'Cargar archivo' button: the client saves the record before calling
+        """'Procesar archivo' button: the client saves the record before calling
         this method, so the file is stored and its sheets are read here."""
         self.ensure_one()
         if not self.file:
@@ -259,16 +257,16 @@ class ImportSession(models.Model):
         if not self.sheet_ids:
             self._sync_sheets()
         if self.sheet_id and self.target_model_id and not self.model_detection_note:
-            message = _("Archivo cargado. Hoja '%s' lista para importar en '%s'. Ahora pulsa 'Analizar' o 'Preparar con IA'.") % (
+            message = _("Archivo procesado. La hoja '%s' está lista para importar en '%s'. Ahora pulsa 'Analizar (Local / Caché)' o 'Preparar y Subir Plantilla con IA'.") % (
                 self.sheet_id.name, self.target_model_id.name)
             ntype = 'success'
         elif self.sheet_id:
-            message = _("Archivo cargado, pero no se pudo detectar el modelo destino. Elígelo en el campo 'Target Model' antes de analizar.")
+            message = _("Archivo procesado, pero no se pudo detectar el modelo destino. Elígelo en el campo 'Modelo destino' antes de analizar.")
             ntype = 'warning'
         else:
-            message = _("Archivo cargado, pero no tiene ninguna hoja con datos para importar.")
+            message = _("Archivo procesado, pero no tiene ninguna hoja con datos para importar.")
             ntype = 'warning'
-        return self._notify(_('Archivo cargado'), message, ntype)
+        return self._notify(_('Archivo procesado'), message, ntype)
 
     @api.onchange('target_model_id')
     def _onchange_target_model_id(self):
@@ -312,7 +310,7 @@ class ImportSession(models.Model):
     def action_apply_template(self):
         self.ensure_one()
         if not self.template_id:
-            raise ValidationError(_("Please select a template to apply."))
+            raise ValidationError(_('Selecciona una plantilla para aplicar.'))
         self._apply_template_lines(self.template_id)
         self._compute_file_duplicates()
         self._validate_values()
@@ -321,7 +319,7 @@ class ImportSession(models.Model):
     def action_save_as_template(self):
         self.ensure_one()
         if not self.column_mapping_ids:
-            raise ValidationError(_("No column mappings available to save as template."))
+            raise ValidationError(_('No hay mapeo de columnas para guardar como plantilla.'))
         lines_vals = [{
             'source_header': m.source_header,
             'target_field_id': m.target_field_id.id or False,
@@ -329,7 +327,7 @@ class ImportSession(models.Model):
             'cleansing_rule_ids': [(6, 0, m.cleansing_rule_ids.ids)],
             'is_ignored': m.is_ignored,
         } for m in self.column_mapping_ids]
-        name = _("Template for %s") % (self.sheet_id.name or self.filename or self.name)
+        name = _('Plantilla para %s') % (self.sheet_id.name or self.filename or self.name)
         template = self.env['import.template'].upsert_for_headers(
             headers=[m.source_header for m in self.column_mapping_ids],
             model=self.target_model_id,
@@ -339,7 +337,7 @@ class ImportSession(models.Model):
             duplicate_policy=self.duplicate_policy,
         )
         self.template_id = template.id
-        return self._notify(_('Template Saved'), _("Mapping saved as template '%s'.") % template.name)
+        return self._notify(_('Plantilla guardada'), _("El mapeo se guardó como la plantilla '%s'.") % template.name)
 
     # ------------------------------------------------------------------
     # Pipeline actions
@@ -348,12 +346,12 @@ class ImportSession(models.Model):
     def _check_ready(self):
         self.ensure_one()
         if not self.file:
-            raise UserError(_("Please upload a file (CSV or Excel) first."))
+            raise UserError(_('Primero sube un archivo (CSV o Excel).'))
         if not self.sheet_id and self.sheet_ids:
-            raise UserError(_("This workbook has no data sheet to import. Sheets: %s")
+            raise UserError(_('Este libro no tiene ninguna hoja de datos para importar. Hojas: %s')
                             % ', '.join(self.sheet_ids.mapped('name')))
         if not self.target_model_id:
-            raise UserError(_("Choose the target model before analysing."))
+            raise UserError(_('Elige el modelo destino antes de analizar.'))
 
     def action_analyze(self):
         self.ensure_one()
@@ -377,7 +375,7 @@ class ImportSession(models.Model):
 
         config = self.env['ir.config_parameter'].sudo()
         if config.get_param('smart_data_importer.llm_enabled', 'False') != 'True':
-            raise UserError(_("The AI assistant is disabled. Enable it in Smart Importer > Configuration > Settings and enter the API key."))
+            raise UserError(_('El asistente de IA está desactivado. Actívalo en Importador Inteligente > Configuración > Ajustes e ingresa la clave de API.'))
 
         from ..services.field_catalog import split_header
         from ..services.mapper_hash import HashMapper
@@ -388,7 +386,7 @@ class ImportSession(models.Model):
         df = file_info['df']
         headers = list(df.columns)
         if not headers:
-            raise UserError(_("The selected sheet has no recognisable columns."))
+            raise UserError(_('La hoja seleccionada no tiene columnas reconocibles.'))
         model = self.target_model_id
 
         self.write({
@@ -410,7 +408,7 @@ class ImportSession(models.Model):
                 model_name=model.model,
             )
         except (LLMError, ValueError) as e:
-            raise UserError(_("The AI analysis failed: %s") % e)
+            raise UserError(_('El análisis de la IA falló: %s') % e)
 
         # Technical headers are certain: they override whatever the AI said
         exact = HashMapper.map_technical(self.env, headers, model_name=model.model)
@@ -433,14 +431,14 @@ class ImportSession(models.Model):
             base, sub = split_header(header)
             if sub and sub != 'id':
                 vals.update({'is_ignored': True, 'target_field_id': False,
-                             'llm_justification': _("Sub-field of related lines: not supported yet.")})
+                             'llm_justification': _('Subcampo de líneas relacionadas: aún no está soportado.')})
             resolved[header] = vals
 
         self.column_mapping_ids.unlink()
         mappings = PipelineOrchestrator.create_mappings(
             self, df, file_info['column_meta'], sample_values_map, resolved, auto_rules=False)
 
-        template_name = ai_data.get('template_name') or _("AI Template - %s") % (self.sheet_id.name or self.filename)
+        template_name = ai_data.get('template_name') or _('Plantilla IA - %s') % (self.sheet_id.name or self.filename)
         provider_name = (ai_data.get('provider') or 'AI').upper()
         criterion = ai_data.get('duplicate_criterion') if model.model == 'res.partner' else 'auto'
         template = self.env['import.template'].upsert_for_headers(
@@ -456,7 +454,7 @@ class ImportSession(models.Model):
             } for m in mappings],
             duplicate_criterion=criterion,
             duplicate_policy=ai_data.get('duplicate_policy'),
-            description=_("Generated by AI (%s - %s):\n\n%s") % (provider_name, ai_data.get('model', ''), ai_data.get('summary', '')),
+            description=_('Generada por IA (%s - %s):\n\n%s') % (provider_name, ai_data.get('model', ''), ai_data.get('summary', '')),
         )
 
         self.write({
@@ -472,26 +470,25 @@ class ImportSession(models.Model):
 
         mapped_count = len(mappings.filtered(lambda m: m.target_field_id and not m.is_ignored))
         return self._notify(
-            _('Template ready'),
-            _("The AI (%s) analysed the sheet and saved template '%s' with %s mapped columns out of %s.")
+            _('Plantilla lista'),
+            _("La IA (%s) analizó la hoja y guardó la plantilla '%s' con %s de %s columnas mapeadas.")
             % (provider_name, template.name, mapped_count, len(mappings)),
         )
 
     def action_confirm_mapping(self):
         self.ensure_one()
         if self.state != 'mapped':
-            raise ValidationError(_("Cannot confirm mapping in current state."))
+            raise ValidationError(_('No se puede confirmar el mapeo en el estado actual.'))
         self._validate_values()
         pending = self.value_issue_pending_count
         if pending:
             raise UserError(_(
-                "There are %s values that do not exist in Odoo and have no decision yet. "
-                "Review them in the 'Valores a revisar' tab (accept a suggestion, type the exact value, or leave empty)."
+                "Hay %s valores que no existen en Odoo y aún no tienen decisión. Revísalos en la pestaña 'Valores a revisar' (acepta la sugerencia, escribe el valor exacto o déjalo vacío)."
             ) % pending)
         self.env['import.value.memory']._learn_from_corrections(self.value_correction_ids)
         self._learn_headers()
         if not self.column_mapping_ids.filtered(lambda m: m.target_field_id and not m.is_ignored):
-            raise ValidationError(_("No column is mapped to a field. Map at least one column before importing."))
+            raise ValidationError(_('Ninguna columna está asignada a un campo. Asigna al menos una columna antes de importar.'))
 
         chunk_size = int(self.env['ir.config_parameter'].sudo().get_param('smart_data_importer.chunk_size', default='500')) or 500
 
@@ -835,8 +832,8 @@ class ImportSession(models.Model):
             and c.confidence * 100 >= threshold)
         safe.write({'decision': 'accept'})
         return self._notify(
-            _('Suggestions accepted'),
-            _("%s values were accepted. Review the rest one by one.") % len(safe))
+            _('Sugerencias aceptadas'),
+            _('Se aceptaron %s valores. Revisa el resto uno por uno.') % len(safe))
 
     def _value_overrides(self):
         """``{(field_name, normalized_value): odoo_value}`` from the user decisions."""
@@ -872,7 +869,7 @@ class ImportSession(models.Model):
     # OWL dashboard
     # ------------------------------------------------------------------
 
-    preview_data = fields.Char(string='Preview', compute='_compute_preview_data', store=False)
+    preview_data = fields.Char(string='Vista previa', compute='_compute_preview_data', store=False)
 
     def _compute_preview_data(self):
         for rec in self:

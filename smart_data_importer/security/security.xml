@@ -3,19 +3,19 @@
     <data noupdate="0">
 
         <record id="group_smart_importer_admin" model="res.groups">
-            <field name="name">Smart Data Importer / Administrator</field>
+            <field name="name">Importador Inteligente / Administrador</field>
             <field name="implied_ids" eval="[(4, ref('base.group_user'))]"/>
         </record>
 
         <record id="rule_import_session_personal" model="ir.rule">
-            <field name="name">Personal Import Sessions</field>
+            <field name="name">Sesiones de importación propias</field>
             <field name="model_id" ref="model_import_session"/>
             <field name="domain_force">[('user_id', '=', user.id)]</field>
             <field name="groups" eval="[(6, 0, [ref('base.group_user')])]"/>
         </record>
 
         <record id="rule_import_session_all" model="ir.rule">
-            <field name="name">All Import Sessions</field>
+            <field name="name">Todas las sesiones de importación</field>
             <field name="model_id" ref="model_import_session"/>
             <field name="domain_force">[(1, '=', 1)]</field>
             <field name="groups" eval="[(6, 0, [ref('base.group_system')])]"/>

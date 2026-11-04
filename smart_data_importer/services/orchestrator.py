@@ -29,7 +29,7 @@ class PipelineOrchestrator:
         except UserError:
             raise
         except Exception as e:
-            raise UserError(_("Error reading file: %s") % str(e))
+            raise UserError(_('Error al leer el archivo: %s') % str(e))
 
         df = file_info['df']
         model_name = session.target_model_id.model
@@ -83,7 +83,7 @@ class PipelineOrchestrator:
                     'is_ignored': True,
                     'source': 'manual',
                     'llm_justification': _(
-                        "Sub-field of related lines (%s). Not supported yet: import those lines separately."
+                        'Subcampo de líneas relacionadas (%s). Aún no está soportado: importa esas líneas por separado.'
                     ) % header,
                 }
         pending = [h for h in headers if h not in resolved]

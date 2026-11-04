@@ -5,97 +5,97 @@ _logger = logging.getLogger(__name__)
 
 class ImportCleansingRule(models.Model):
     _name = 'import.cleansing.rule'
-    _description = 'Data Cleansing & Normalization Rule'
+    _description = 'Regla de limpieza y normalización'
     _order = 'sequence, id'
 
-    name = fields.Char(string='Rule Name', required=True, translate=True)
-    sequence = fields.Integer(string='Sequence', default=10)
-    active = fields.Boolean(string='Active', default=True)
-    description = fields.Text(string='Description')
+    name = fields.Char(string='Nombre de la regla', required=True, translate=True)
+    sequence = fields.Integer(string='Secuencia', default=10)
+    active = fields.Boolean(string='Activo', default=True)
+    description = fields.Text(string='Descripción')
 
     category = fields.Selection([
-        ('text', 'Text & Formatting'),
-        ('contact', 'Contacts & Tax IDs'),
-        ('number', 'Numbers & Currency'),
-        ('date', 'Dates & Times'),
-        ('custom', 'Custom / Advanced')
-    ], string='Category', default='text', required=True)
+        ('text', 'Texto y formato'),
+        ('contact', 'Contactos y documentos'),
+        ('number', 'Números y moneda'),
+        ('date', 'Fechas y horas'),
+        ('custom', 'Personalizada / Avanzada')
+    ], string='Categoría', default='text', required=True)
 
     action_type = fields.Selection([
         # Text & Formatting
-        ('strip', 'Trim Whitespace'),
-        ('lowercase', 'Lowercase'),
-        ('uppercase', 'Uppercase'),
-        ('titlecase', 'Capitalize Words (Title Case)'),
-        ('remove_accents', 'Remove Accents / Diacritics'),
-        ('digits_only', 'Keep Digits Only'),
-        ('find_replace', 'Find & Replace Text'),
-        ('prefix_suffix', 'Add/Remove Prefix & Suffix'),
-        ('value_mapping', 'Value Mapping (Dictionary)'),
-        ('default_value', 'Default Value Fallback'),
+        ('strip', 'Quitar espacios sobrantes'),
+        ('lowercase', 'Minúsculas'),
+        ('uppercase', 'Mayúsculas'),
+        ('titlecase', 'Primera letra en mayúscula'),
+        ('remove_accents', 'Quitar tildes'),
+        ('digits_only', 'Dejar solo dígitos'),
+        ('find_replace', 'Buscar y reemplazar texto'),
+        ('prefix_suffix', 'Agregar/quitar prefijo y sufijo'),
+        ('value_mapping', 'Equivalencia de valores (diccionario)'),
+        ('default_value', 'Valor por defecto si está vacío'),
         
         # Contacts & Tax IDs
-        ('email', 'Normalize Email'),
-        ('phone', 'Normalize Phone Number'),
-        ('vat_document', 'Normalize Tax ID / Document'),
+        ('email', 'Normalizar correo'),
+        ('phone', 'Normalizar teléfono'),
+        ('vat_document', 'Normalizar NIT / documento'),
         
         # Numbers & Dates
-        ('number_clean', 'Clean Currency / Number'),
-        ('date_format', 'Normalize Date Format'),
+        ('number_clean', 'Limpiar moneda / número'),
+        ('date_format', 'Normalizar formato de fecha'),
         
         # Custom / Advanced
-        ('regex', 'Custom Regex Replacement'),
-        ('python_code', 'Python Code (Safe Eval)')
-    ], string='Action Type', required=True, default='strip')
+        ('regex', 'Reemplazo con expresión regular'),
+        ('python_code', 'Código Python (evaluación segura)')
+    ], string='Tipo de acción', required=True, default='strip')
 
     # Specific Configuration Fields
     # Find & Replace
-    find_text = fields.Char(string='Find Text')
-    replace_text = fields.Char(string='Replace With', default='')
-    case_sensitive = fields.Boolean(string='Case Sensitive', default=False)
+    find_text = fields.Char(string='Texto a buscar')
+    replace_text = fields.Char(string='Reemplazar por', default='')
+    case_sensitive = fields.Boolean(string='Distinguir mayúsculas', default=False)
 
     # Prefix & Suffix
-    prefix_text = fields.Char(string='Prefix')
-    suffix_text = fields.Char(string='Suffix')
-    remove_prefix = fields.Boolean(string='Remove Prefix if exists', default=False)
-    remove_suffix = fields.Boolean(string='Remove Suffix if exists', default=False)
+    prefix_text = fields.Char(string='Prefijo')
+    suffix_text = fields.Char(string='Sufijo')
+    remove_prefix = fields.Boolean(string='Quitar prefijo si existe', default=False)
+    remove_suffix = fields.Boolean(string='Quitar sufijo si existe', default=False)
 
     # Value Mapping
-    line_ids = fields.One2many('import.cleansing.rule.line', 'rule_id', string='Value Mapping Table')
+    line_ids = fields.One2many('import.cleansing.rule.line', 'rule_id', string='Tabla de equivalencias')
 
     # Default Value
-    default_value = fields.Char(string='Default Value if Empty')
+    default_value = fields.Char(string='Valor por defecto si está vacío')
 
     # Number / Currency Clean
     decimal_separator = fields.Selection([
-        ('dot', 'Dot as Decimal (e.g. 1,250.50 -> 1250.50)'),
-        ('comma', 'Comma as Decimal (e.g. 1.250,50 -> 1250.50)')
-    ], string='Decimal Notation', default='comma')
+        ('dot', 'Punto decimal (ej. 1,250.50 -> 1250.50)'),
+        ('comma', 'Coma decimal (ej. 1.250,50 -> 1250.50)')
+    ], string='Notación decimal', default='comma')
 
     # Date Format
     date_input_format = fields.Selection([
-        ('auto', 'Auto-detect Format'),
-        ('%d/%m/%Y', 'DD/MM/YYYY (e.g. 31/12/2025)'),
-        ('%m/%d/%Y', 'MM/DD/YYYY (e.g. 12/31/2025)'),
-        ('%Y-%m-%d', 'YYYY-MM-DD (e.g. 2025-12-31)'),
-        ('%Y/%m/%d', 'YYYY/MM/DD (e.g. 2025/12/31)'),
-        ('%d-%m-%Y', 'DD-MM-YYYY (e.g. 31-12-2025)'),
-        ('%Y%m%d', 'YYYYMMDD (e.g. 20251231)')
-    ], string='Input Date Format', default='auto')
+        ('auto', 'Detectar automáticamente'),
+        ('%d/%m/%Y', 'DD/MM/AAAA (ej. 31/12/2025)'),
+        ('%m/%d/%Y', 'MM/DD/AAAA (ej. 12/31/2025)'),
+        ('%Y-%m-%d', 'AAAA-MM-DD (ej. 2025-12-31)'),
+        ('%Y/%m/%d', 'AAAA/MM/DD (ej. 2025/12/31)'),
+        ('%d-%m-%Y', 'DD-MM-AAAA (ej. 31-12-2025)'),
+        ('%Y%m%d', 'AAAAMMDD (ej. 20251231)')
+    ], string='Formato de fecha de entrada', default='auto')
 
     # Regex
-    regex_pattern = fields.Char(string='Regex Pattern', help='Regular expression pattern to match.')
-    regex_replacement = fields.Char(string='Regex Replacement', default='', help='Text to replace matches with.')
+    regex_pattern = fields.Char(string='Patrón (regex)', help='Expresión regular que se busca.')
+    regex_replacement = fields.Char(string='Reemplazo (regex)', default='', help='Texto con el que se reemplazan las coincidencias.')
 
     # Python Code
     python_code = fields.Text(
-        string='Python Code',
+        string='Código Python',
         default="# Available variables: 'value' (input string), 'rule' (rule record)\n# Store output in 'result'\nresult = value.strip()"
     )
 
     # Live Sandbox / Interactive Tester
-    test_input = fields.Char(string='Sample Input', default='  Example Text 123  ')
-    test_output = fields.Char(string='Transformed Output', compute='_compute_test_output', readonly=True)
+    test_input = fields.Char(string='Entrada de prueba', default='  Example Text 123  ')
+    test_output = fields.Char(string='Resultado transformado', compute='_compute_test_output', readonly=True)
 
     @api.depends('test_input', 'action_type', 'find_text', 'replace_text', 'case_sensitive',
                  'prefix_text', 'suffix_text', 'remove_prefix', 'remove_suffix',
@@ -128,8 +128,8 @@ class ImportCleansingRule(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': _('Rule Tested Successfully'),
-                'message': _("Input: '%s' -> Output: '%s'") % (self.test_input or '', self.test_output or ''),
+                'title': _('Regla probada correctamente'),
+                'message': _("Entrada: '%s' -> Resultado: '%s'") % (self.test_input or '', self.test_output or ''),
                 'type': 'success',
                 'sticky': False,
             }
@@ -138,10 +138,10 @@ class ImportCleansingRule(models.Model):
 
 class ImportCleansingRuleLine(models.Model):
     _name = 'import.cleansing.rule.line'
-    _description = 'Value Mapping Line'
+    _description = 'Línea de equivalencia'
     _order = 'sequence, id'
 
-    rule_id = fields.Many2one('import.cleansing.rule', string='Rule', required=True, ondelete='cascade')
-    sequence = fields.Integer(string='Sequence', default=10)
-    source_value = fields.Char(string='Original Value (From)', required=True)
-    target_value = fields.Char(string='Mapped Value (To)', required=True)
+    rule_id = fields.Many2one('import.cleansing.rule', string='Regla', required=True, ondelete='cascade')
+    sequence = fields.Integer(string='Secuencia', default=10)
+    source_value = fields.Char(string='Valor original (de)', required=True)
+    target_value = fields.Char(string='Valor equivalente (a)', required=True)
