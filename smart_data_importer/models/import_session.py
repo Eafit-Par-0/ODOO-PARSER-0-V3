@@ -164,8 +164,7 @@ class ImportSession(models.Model):
             for line in summaries
         }
 
-    @api.depends('state', 'previous_session_id', 'error_summary_ids.stage', 'error_summary_ids.row_count',
-                'previous_session_id.state', 'previous_session_id.error_summary_ids.row_count')
+    @api.depends('state', 'previous_session_id', 'error_summary_ids.stage', 'error_summary_ids.row_count')
     def _compute_comparison(self):
         for rec in self:
             previous = rec.previous_session_id
