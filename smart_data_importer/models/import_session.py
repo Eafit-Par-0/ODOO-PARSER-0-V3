@@ -97,6 +97,15 @@ class ImportSession(models.Model):
         string='Archivo con módulos mezclados', compute='_compute_mixed_models',
         help='Verdadero cuando las hojas de datos del libro pertenecen a modelos de Odoo distintos.')
     mixed_models_text = fields.Char(string='Hojas y modelos detectados', compute='_compute_mixed_models')
+        # History and comparison with the previous session of the same file
+    history_session_ids = fields.Many2many(
+        'import.session', string='Sesiones anteriores con este archivo', compute='_compute_history')
+    previous_session_id = fields.Many2one(
+        'import.session', string='Sesión anterior', compute='_compute_history')
+    comparison_fixed_count = fields.Integer(string='Problemas corregidos', compute='_compute_comparison')
+    comparison_new_count = fields.Integer(string='Problemas nuevos', compute='_compute_comparison')
+    comparison_remaining_count = fields.Integer(string='Problemas que siguen', compute='_compute_comparison')
+    comparison_text = fields.Text(string='Detalle de la comparación', compute='_compute_comparison')
 
     @api.depends('error_summary_ids.stage', 'error_summary_ids.row_count')
     def _compute_error_counts(self):
@@ -128,6 +137,63 @@ class ImportSession(models.Model):
                 '%s → %s' % (sheet.name, sheet.detected_model_id.name) for sheet in sheets
             ) if mixed else False
 
+    @api.depends('filename', 'target_model_id')
+    def _compute_history(self):
+        for rec in self:
+            origin = rec._origin
+            if not origin.id or not rec.filename:
+                rec.history_session_ids = False
+                rec.previous_session_id = False
+                continue
+            history = self.search([
+                ('id', '<', origin.id),
+                ('filename', '=', rec.filename),
+                ('target_model_id', '=', rec.target_model_id.id),
+            ], order='id desc', limit=20)
+            rec.history_session_ids = history
+            rec.previous_session_id = history[:1]
+
+    def _error_snapshot(self):
+        """``{(columna, problema): (filas afectadas, título)}`` of the latest result of the session:
+        the import errors once it has run, the pre-import check otherwise."""
+        self.ensure_one()
+        stage = 'import' if self.state in ('done', 'error') else 'precheck'
+        summaries = self.error_summary_ids.filtered(lambda e: e.stage == stage)
+        return {
+            (line.column_header, line.error_category): (line.row_count, line.title or line.error_category)
+            for line in summaries
+        }
+
+    @api.depends('state', 'previous_session_id', 'error_summary_ids.stage', 'error_summary_ids.row_count',
+                'previous_session_id.state', 'previous_session_id.error_summary_ids.row_count')
+    def _compute_comparison(self):
+        for rec in self:
+            previous = rec.previous_session_id
+            rec.comparison_fixed_count = rec.comparison_new_count = rec.comparison_remaining_count = 0
+            rec.comparison_text = False
+            if not previous or rec.state not in ('mapped', 'done', 'error'):
+                continue
+            before, now = previous._error_snapshot(), rec._error_snapshot()
+            fixed = [key for key in before if key not in now]
+            new = [key for key in now if key not in before]
+            remaining = [key for key in now if key in before]
+            rec.comparison_fixed_count = len(fixed)
+            rec.comparison_new_count = len(new)
+            rec.comparison_remaining_count = len(remaining)
+
+            when = fields.Datetime.context_timestamp(rec, previous.create_date).strftime('%d/%m/%Y %H:%M')
+            lines = [_("Comparado con la sesión %(name)s del %(date)s.") % {'name': previous.name, 'date': when}]
+            if not before and not now:
+                lines.append(_("Ninguna de las dos sesiones tiene problemas por columna."))
+            lines += [_("Corregido: %(col)s - %(title)s (antes en %(n)s filas)") % {
+                'col': col, 'title': before[(col, cat)][1], 'n': before[(col, cat)][0]} for col, cat in fixed]
+            lines += [_("Nuevo: %(col)s - %(title)s (%(n)s filas)") % {
+                'col': col, 'title': now[(col, cat)][1], 'n': now[(col, cat)][0]} for col, cat in new]
+            lines += [_("Sigue: %(col)s - %(title)s (de %(old)s a %(new)s filas)") % {
+                'col': col, 'title': now[(col, cat)][1],
+                'old': before[(col, cat)][0], 'new': now[(col, cat)][0]} for col, cat in remaining]
+            rec.comparison_text = '\n'.join(lines)
+
     @staticmethod
     def _short_list(names, limit=8):
         names = list(names)
@@ -152,7 +218,7 @@ class ImportSession(models.Model):
         return best if hits * 2 >= len(foreign) else False
 
     @api.depends('value_correction_ids.decision', 'value_correction_ids.source',
-                 'column_mapping_ids.value_issue_overflow')
+                'column_mapping_ids.value_issue_overflow')
     def _compute_value_counts(self):
         for rec in self:
             corrections = rec.value_correction_ids
@@ -449,7 +515,7 @@ class ImportSession(models.Model):
             base, sub = split_header(header)
             if sub and sub != 'id':
                 vals.update({'is_ignored': True, 'target_field_id': False,
-                             'llm_justification': _('Subcampo de líneas relacionadas: aún no está soportado.')})
+                            'llm_justification': _('Subcampo de líneas relacionadas: aún no está soportado.')})
             resolved[header] = vals
 
         self.column_mapping_ids.unlink()
@@ -579,8 +645,8 @@ class ImportSession(models.Model):
         # Same read of the file: also find the cells Odoo will reject (numbers, dates, required...)
         self._precheck_errors(df, mappings)
         validator = ValueValidator(self.env, self.target_model_id.model, threshold=threshold,
-                                   max_candidates=max_candidates,
-                                   memory=self._load_value_memory(mappings))
+                                max_candidates=max_candidates,
+                                memory=self._load_value_memory(mappings))
         issues, overflow = validator.validate(df, plan)
 
         signatures = {m.id: self._mapping_signature(m) for m in mappings}
@@ -668,7 +734,7 @@ class ImportSession(models.Model):
                 if empty:
                     if required and field.type != 'boolean':
                         errors.append({'column': header, 'field_label': field_label, 'category': 'required',
-                                       'row': int(row_number)})
+                                    'row': int(row_number)})
                     continue
                 if not check_values:
                     continue
@@ -687,8 +753,8 @@ class ImportSession(models.Model):
         mapped_names = set(mappings.mapped('target_field_id.name'))
         importable = FieldCatalog.importable_fields(self.env, model_name)
         missing = [f for f in importable
-                   if f.name not in mapped_names and Model._fields[f.name].required
-                   and f.ttype != 'boolean']
+                if f.name not in mapped_names and Model._fields[f.name].required
+                and f.ttype != 'boolean']
         if missing:
             try:
                 defaults = Model.default_get([f.name for f in missing])
@@ -698,7 +764,7 @@ class ImportSession(models.Model):
             for f in missing:
                 if defaults.get(f.name) in (None, False, ''):
                     errors.append({'column': _("(sin columna) %s") % f.field_description,
-                                   'field_label': label(f), 'category': 'missing_column'})
+                                'field_label': label(f), 'category': 'missing_column'})
 
         self._replace_error_summary('precheck', errors)
         return errors
@@ -748,7 +814,7 @@ class ImportSession(models.Model):
             'res_model': 'import.row.error',
             'view_mode': 'list,form',
             'views': [(self.env.ref('smart_data_importer.view_import_row_error_list').id, 'list'),
-                      (False, 'form')],
+                    (False, 'form')],
             'search_view_id': self.env.ref('smart_data_importer.view_import_row_error_search').id,
             'domain': [('session_id', '=', self.id)],
             'context': {'group_by': ['column_header', 'error_category']},
@@ -879,8 +945,8 @@ class ImportSession(models.Model):
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {'title': title, 'message': message, 'type': ntype, 'sticky': False,
-                       # reload the form so the new mappings are visible
-                       'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
+                        # reload the form so the new mappings are visible
+                        'next': {'type': 'ir.actions.client', 'tag': 'soft_reload'}},
         }
 
     # ------------------------------------------------------------------
