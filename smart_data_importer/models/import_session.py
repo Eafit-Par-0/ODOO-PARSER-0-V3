@@ -93,6 +93,10 @@ class ImportSession(models.Model):
     foreign_columns_text = fields.Char(string='Columnas de otro modelo (lista)', compute='_compute_column_fit')
     unknown_columns_text = fields.Char(string='Columnas sin campo (lista)', compute='_compute_column_fit')
     foreign_model_hint = fields.Char(string='Modelo sugerido por las columnas ajenas', compute='_compute_column_fit')
+    is_mixed_models = fields.Boolean(
+        string='Archivo con módulos mezclados', compute='_compute_mixed_models',
+        help='Verdadero cuando las hojas de datos del libro pertenecen a modelos de Odoo distintos.')
+    mixed_models_text = fields.Char(string='Hojas y modelos detectados', compute='_compute_mixed_models')
 
     @api.depends('error_summary_ids.stage', 'error_summary_ids.row_count')
     def _compute_error_counts(self):
@@ -113,6 +117,16 @@ class ImportSession(models.Model):
             rec.foreign_columns_text = self._short_list(foreign.mapped('source_header'))
             rec.unknown_columns_text = self._short_list(unknown.mapped('source_header'))
             rec.foreign_model_hint = rec._guess_foreign_model(foreign)
+
+    @api.depends('sheet_ids.kind', 'sheet_ids.name', 'sheet_ids.detected_model_id')
+    def _compute_mixed_models(self):
+        for rec in self:
+            sheets = rec.sheet_ids.filtered(lambda s: s.kind == 'data' and s.detected_model_id)
+            mixed = len(sheets.mapped('detected_model_id')) > 1
+            rec.is_mixed_models = mixed
+            rec.mixed_models_text = '; '.join(
+                '%s → %s' % (sheet.name, sheet.detected_model_id.name) for sheet in sheets
+            ) if mixed else False
 
     @staticmethod
     def _short_list(names, limit=8):
@@ -216,6 +230,7 @@ class ImportSession(models.Model):
         } for i, s in enumerate(summaries)])
 
         data_sheets = sheets.filtered(lambda s: s.kind == 'data')
+        data_sheets._detect_models()
         default = (data_sheets.filtered('visible') or data_sheets)[:1]
         ctx_self.sheet_id = default.id or False
         self._detect_target_model()
@@ -265,6 +280,9 @@ class ImportSession(models.Model):
             ntype = 'warning'
         else:
             message = _("Archivo procesado, pero no tiene ninguna hoja con datos para importar.")
+            ntype = 'warning'
+        if self.is_mixed_models:
+            message += _(" Atención: el archivo mezcla datos de varios módulos (%s). Solo se importará la hoja seleccionada.") % self.mixed_models_text
             ntype = 'warning'
         return self._notify(_('Archivo procesado'), message, ntype)
 

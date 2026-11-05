@@ -73,6 +73,15 @@
                         <field name="model_detection_note" readonly="1" nolabel="1"/>
                     </div>
                     <div class="alert alert-warning" role="alert" invisible="required_missing_count == 0">
+                    <div class="alert alert-warning" role="alert"
+                        invisible="not is_mixed_models or state not in ('draft', 'analyzing', 'mapped')">
+                        <strong>Este archivo mezcla datos de varios módulos:</strong>
+                        <field name="mixed_models_text" readonly="1"/>.
+                        En esta sesión solo se importará la hoja
+                        <strong><field name="sheet_id" readonly="1" options="{'no_open': True}"/></strong>
+                        en <strong><field name="target_model_id" readonly="1" options="{'no_open': True}"/></strong>.
+                        Para las demás hojas crea una sesión nueva con el mismo archivo y elige la hoja correspondiente.
+                    </div>
                         Hay <field name="required_missing_count" class="fw-bold"/> celdas vacías en columnas marcadas como obligatorias en la plantilla.
                         Revisa la columna "Vacías" en el mapeo.
                     </div>
@@ -167,6 +176,8 @@
                                     <field name="visible" widget="boolean"/>
                                     <field name="row_count"/>
                                     <field name="column_count"/>
+                                    <field name="detected_model_id" optional="show"/>
+                                    <field name="detection_score" widget="percentage" optional="hide"/>
                                     <field name="dropped_rows"/>
                                     <field name="header_list" optional="hide"/>
                                 </list>
