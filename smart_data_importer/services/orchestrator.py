@@ -95,7 +95,11 @@ class PipelineOrchestrator:
 
         # 4. Fuzzy
         config = session.env['ir.config_parameter'].sudo()
-        threshold = int(config.get_param('smart_data_importer.fuzzy_threshold', default='85'))
+        try:
+            threshold = int(float(config.get_param('smart_data_importer.fuzzy_threshold', default='85')))
+        except (TypeError, ValueError):
+            threshold = 85
+        threshold = max(0, min(100, threshold))
         fuzzy_results = FuzzyMapper.map(session.env, pending, model_name=model_name, threshold=threshold)
         resolved.update(fuzzy_results)
         pending = [h for h in pending if h not in fuzzy_results]
