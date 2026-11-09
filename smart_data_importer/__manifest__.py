@@ -1,6 +1,6 @@
 {
     'name': 'Importador Inteligente de Datos',
-    'version': '19.0.1.5.0',
+    'version': '19.0.1.5.1',
     'summary': 'Import Odoo base templates (contacts, accounts, taxes, products...) from CSV/Excel with AI-assisted mapping.',
     'category': 'Productivity',
     'author': 'Team',

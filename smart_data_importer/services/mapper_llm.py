@@ -55,13 +55,24 @@ class LLMMapper:
 
     @classmethod
     def _get_config(cls, env):
+        import os
         config = env['ir.config_parameter'].sudo()
         provider = (config.get_param('smart_data_importer.llm_provider') or 'deepseek').lower()
+        api_key = (config.get_param('smart_data_importer.llm_api_key') or '').strip()
+        if not api_key:
+            api_key = (
+                os.environ.get('SMART_DATA_IMPORTER_LLM_API_KEY')
+                or (os.environ.get('ANTHROPIC_API_KEY') if provider == 'anthropic' else '')
+                or (os.environ.get('OPENAI_API_KEY') if provider == 'openai' else '')
+                or (os.environ.get('DEEPSEEK_API_KEY') if provider == 'deepseek' else '')
+                or (os.environ.get('GEMINI_API_KEY') if provider == 'gemini' else '')
+                or ''
+            ).strip()
         return {
             'enabled': config.get_param('smart_data_importer.llm_enabled', 'False') == 'True',
             'provider': provider,
             'model': (config.get_param('smart_data_importer.llm_model') or '').strip() or cls._get_default_model(provider),
-            'api_key': (config.get_param('smart_data_importer.llm_api_key') or '').strip(),
+            'api_key': api_key,
             'base_url': (config.get_param('smart_data_importer.llm_base_url') or '').strip(),
             'send_samples': config.get_param('smart_data_importer.llm_send_samples', 'True') != 'False',
         }
