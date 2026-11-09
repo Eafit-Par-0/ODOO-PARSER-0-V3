@@ -72,8 +72,7 @@
                     <div class="alert alert-warning" role="alert" invisible="not model_detection_note or state != 'draft'">
                         <field name="model_detection_note" readonly="1" nolabel="1"/>
                     </div>
-                    <div class="alert alert-warning" role="alert" invisible="required_missing_count == 0">
-                                        <!-- Comparación con la sesión anterior -->
+                    <!-- Comparación con la sesión anterior -->
                     <div class="alert alert-info" role="status"
                         invisible="not previous_session_id or state not in ('mapped', 'done', 'error')">
                         Comparado con la sesión anterior de este archivo:
@@ -91,6 +90,7 @@
                         en <strong><field name="target_model_id" readonly="1" options="{'no_open': True}"/></strong>.
                         Para las demás hojas crea una sesión nueva con el mismo archivo y elige la hoja correspondiente.
                     </div>
+                    <div class="alert alert-warning" role="alert" invisible="required_missing_count == 0">
                         Hay <field name="required_missing_count" class="fw-bold"/> celdas vacías en columnas marcadas como obligatorias en la plantilla.
                         Revisa la columna "Vacías" en el mapeo.
                     </div>
@@ -192,7 +192,7 @@
                                 </list>
                             </field>
                         </page>
-                                                <page name="history" string="Historial y comparación" invisible="not history_session_ids">
+                        <page name="history" string="Historial y comparación" invisible="not history_session_ids">
                             <group invisible="not previous_session_id or state not in ('mapped', 'done', 'error')">
                                 <group string="Comparación con la sesión anterior">
                                     <field name="previous_session_id" readonly="1" options="{'no_create': True}"/>
