@@ -8,6 +8,7 @@
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
+        'data/ir_sequence_data.xml',
         'data/mapping_registry_data.xml',
         'data/cleansing_rules_data.xml',
         'data/import_config_data.xml',

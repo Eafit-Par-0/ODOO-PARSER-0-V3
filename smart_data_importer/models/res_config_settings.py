@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import ValidationError
 
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
@@ -11,7 +12,8 @@ class ResConfigSettings(models.TransientModel):
     smart_data_importer_fuzzy_threshold = fields.Integer(
         string='Umbral de similitud',
         config_parameter='smart_data_importer.fuzzy_threshold',
-        default=85
+        default=85,
+        help='Similitud mínima (0-100) para asignar un encabezado a un campo aunque tenga errores de ortografía.'
     )
     smart_data_importer_chunk_size = fields.Integer(
         string='Tamaño de lote',
@@ -111,4 +113,9 @@ class ResConfigSettings(models.TransientModel):
                 'sticky': not success,
             }
         }
-
+    
+    @api.constrains('smart_data_importer_fuzzy_threshold')
+    def _check_smart_data_importer_fuzzy_threshold(self):
+        for rec in self:
+            if not 0 <= rec.smart_data_importer_fuzzy_threshold <= 100:
+                raise ValidationError(_('El umbral de similitud debe estar entre 0 y 100.'))
