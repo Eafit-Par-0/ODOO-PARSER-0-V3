@@ -1,142 +1,103 @@
-# ODOO-PARSER (Importador Inteligente de Datos)
+# ODOO-PARSER (Intelligent Data Importer)
 
-Módulo nativo de **Odoo 19** que transforma archivos crudos (Excel / CSV) en registros limpios de Odoo mediante un pipeline ETL asistido por IA. Proyecto Integrador 2 – EAFIT.
-
----
-
-## Enlace de despliegue
-
-> **URL de la aplicación desplegada:** 
+A native **Odoo 19** module that transforms raw files (Excel / CSV) into clean Odoo records through an AI-assisted ETL pipeline. Integrative Project 2 – EAFIT.
 
 ---
 
-## 1. Información de la aplicación
+## 1. Application Information
 
-### Problema
-La homologación de datos de clientes es una tarea manual. Al migrar a Odoo o recibir bases de terceros (distribuidores, ferias, cámaras de comercio, sistemas legados), cada archivo trae encabezados distintos: `NIT`, `Nit Cliente`, `Identificación`, `Doc.` o `RUT` significan lo mismo, pero Odoo espera el campo `vat`. El analista debe interpretar cada columna, renombrarla a mano y ejecutar el importador nativo, que falla en la primera inconsistencia, obligando a repetir el ciclo (entre 2 y 5 horas por archivo).
+### Problem
+Customer data mapping is a manual task. When migrating to Odoo or receiving third-party databases (distributors, trade fairs, chambers of commerce, legacy systems), each file comes with different column headers: `NIT`, `Nit Cliente`, `Identificación`, `Doc.`, or `RUT` all mean the same thing, but Odoo expects the `vat` field. The analyst must interpret each column, rename it manually, and run the native importer, which fails at the first inconsistency, forcing them to repeat the entire process (between 2 and 5 hours per file).
 
-### Solución
-**Importador Inteligente de Datos** (`smart_data_importer`) reconoce automáticamente a qué campo de Odoo corresponde cada columna, limpia y valida los valores, detecta duplicados y muestra todo al usuario **antes** de escribir en la base de datos (*human-in-the-loop*: nunca se escribe sin confirmación explícita).
+### Solution
+**Intelligent Data Importer** (`smart_data_importer`) automatically identifies which Odoo field corresponds to each column, cleans and validates values, detects duplicates, and displays everything to the user **before** writing to the database (*human-in-the-loop*: no data is ever written without explicit confirmation).
 
-### Funcionalidades principales
-- Lectura de **CSV, XLSX/XLSM y XLS** con detección automática de codificación, delimitador, fila de encabezado y hojas (omite hojas de instrucciones o de "posibles valores").
-- **Mapeo automático de columnas** en cascada con puntaje de confianza y justificación.
-- **Plantillas reutilizables**: si los encabezados coinciden con una importación previa, el mapeo se aplica directamente.
-- **Reglas de limpieza** (email, teléfono, documento/VAT, etc.).
-- **Detección de duplicados** con criterio (VAT, email, VAT o email, automático) y política (actualizar, omitir, crear).
-- **Vista previa** con los datos originales junto a los mapeados, y corrección manual de columnas y valores.
-- **Memoria de correcciones** de valores para futuras importaciones.
-- **Explicación de errores** por fila y resumen de errores (pre-validación e importación).
-- **Procesamiento por lotes en cola** para grandes volúmenes, con seguimiento del progreso.
-- Soporta varios modelos destino de Odoo (por ejemplo `res.partner`, cuentas, impuestos, productos).
+### Main Features
+- Reads **CSV, XLSX/XLSM, and XLS** files with automatic detection of encoding, delimiter, header row, and worksheets (skips instruction sheets or sheets containing "possible values").
+- **Automatic cascading column mapping** with confidence scores and explanations.
+- **Reusable templates**: if headers match those from a previous import, the mapping is applied automatically.
+- **Data cleansing rules** (email, phone, document/VAT, etc.).
+- **Duplicate detection** with configurable criteria (VAT, email, VAT or email, automatic) and policies (update, skip, create).
+- **Preview** displaying original and mapped data side by side, with manual column and value correction.
+- **Value correction memory** for future imports.
+- **Row-level error explanations** and error summaries (pre-validation and import).
+- **Queued batch processing** for large volumes, with progress tracking.
+- Supports multiple Odoo target models (e.g., `res.partner`, accounts, taxes, products).
 
 ---
 
-## 2. ¿Cómo funciona?
+## 2. How Does It Work?
 
 ```
-Archivo (CSV/Excel)
+File (CSV/Excel)
       │
       ▼
- 1. Lectura y detección (encoding, delimitador, encabezados, hoja)
+ 1. Reading and detection (encoding, delimiter, headers, worksheet)
       │
       ▼
- 2. ¿Existe plantilla con la misma firma de encabezados? ── sí ──► aplica mapeo guardado
+ 2. Does a template with the same header signature exist? ── yes ──► apply saved mapping
       │ no
       ▼
- 3. Mapeo en cascada (solo lo que queda sin resolver pasa al siguiente nivel)
-      ├─ Nivel 1 · Hash      → diccionario de sinónimos ("NIT" → vat)
-      ├─ Nivel 2 · Fuzzy     → similitud de texto con RapidFuzz (tildes, mayúsculas, typos)
-      └─ Nivel 3 · LLM       → análisis semántico con nombre de columna + valores de muestra
+ 3. Cascading mapping (only unresolved fields move to the next level)
+      ├─ Level 1 · Hash      → synonym dictionary ("NIT" → vat)
+      ├─ Level 2 · Fuzzy     → text similarity using RapidFuzz (accents, capitalization, typos)
+      └─ Level 3 · LLM       → semantic analysis using column names + sample values
       │
       ▼
- 4. Revisión humana: vista previa, confianza (verde→rojo), correcciones
+ 4. Human review: preview, confidence levels (green→red), corrections
       │
       ▼
- 5. Limpieza + validación + deduplicación
+ 5. Cleansing + validation + deduplication
       │
       ▼
- 6. Importación por lotes en cola ──► registros en Odoo
+ 6. Queued batch import ──► Odoo records
 ```
 
-**Estados de una sesión de importación:** `Borrador → Analizando → Mapeado → En cola → Procesando → Terminado / Error`.
+**Import session statuses:** `Draft → Analyzing → Mapped → Queued → Processing → Completed / Error`.
 
-### Proveedores de IA soportados (configurable en Ajustes)
-Anthropic (Claude), OpenAI, DeepSeek, Google Gemini y cualquier endpoint compatible con OpenAI (Ollama, Groq, OpenRouter…). Incluye prueba de conexión y umbral de similitud difuso configurable.
+### Supported AI Providers (Configurable in Settings)
+Anthropic (Claude), OpenAI, DeepSeek, Google Gemini, and any OpenAI-compatible endpoint (Ollama, Groq, OpenRouter, etc.). Includes connection testing and a configurable fuzzy similarity threshold.
 
-> Los datos de clientes usados en pruebas se anonimizan; no se envían datos personales reales al proveedor de LLM.
+> Customer data used for testing is anonymized; no real personal data is sent to the LLM provider.
 
 ---
 
-## 3. Tecnologías y con qué está desarrollado
+## 3. Technologies and Development Stack
 
-| Capa | Tecnología |
+| Layer | Technology |
 |---|---|
-| Plataforma | **Odoo 19** (framework ORM, vistas XML, seguridad, cron, colas) |
+| Platform | **Odoo 19** (ORM framework, XML views, security, cron, queues) |
 | Backend | **Python 3** |
-| Frontend | **JavaScript (OWL)** + plantillas **XML** (tabla de vista previa) |
-| Lectura de archivos | `pandas`, `openpyxl`, `chardet` |
-| Mapeo difuso | `rapidfuzz` |
-| Integración con IA | `requests` (APIs REST de Anthropic, OpenAI, DeepSeek, Gemini y compatibles) |
-| Base de datos | **PostgreSQL** (vía Odoo) |
-| Pruebas | Tests de Odoo (`tests/`) y `pytest` para pruebas unitarias |
-| Calidad de código | `pylint-odoo` / `ruff` |
-| Despliegue | Odoo.sh / entorno Odoo 19 |
-| Control de versiones | Git + GitHub (Conventional Commits) |
+| Frontend | **JavaScript (OWL)** + **XML** templates (preview table) |
+| File reading | `pandas`, `openpyxl`, `chardet` |
+| Fuzzy mapping | `rapidfuzz` |
+| AI integration | `requests` (REST APIs for Anthropic, OpenAI, DeepSeek, Gemini, and compatible providers) |
+| Database | **PostgreSQL** (through Odoo) |
+| Testing | Odoo tests (`tests/`) and `pytest` for unit testing |
+| Code quality | `pylint-odoo` / `ruff` |
+| Deployment | Odoo.sh / Odoo 19 environment |
+| Version control | Git + GitHub (Conventional Commits) |
 
-**Dependencias Python** (`requirements.txt`): `rapidfuzz`, `pandas`, `openpyxl`, `chardet`, `requests`.
+**Python Dependencies** (`requirements.txt`): `rapidfuzz`, `pandas`, `openpyxl`, `chardet`, `requests`.
 
 ---
 
-## 4. Estructura del repositorio
+## 4. Repository Structure
 
 ```
 ODOO-PARSER-0-V3/
-├── smart_data_importer/       # Módulo principal: importador inteligente
-│   ├── models/                # Sesiones, plantillas, mapeos, errores, reglas, memoria
-│   │   └── mixins/            # Archivo, progreso, firma y deduplicación
-│   ├── services/              # Lógica: file_reader, mapper_hash/fuzzy/llm, orchestrator,
+├── smart_data_importer/       # Main module: intelligent data importer
+│   ├── models/                # Sessions, templates, mappings, errors, rules, memory
+│   │   └── mixins/            # File, progress, signature, and deduplication mixins
+│   ├── services/              # Logic: file_reader, mapper_hash/fuzzy/llm, orchestrator,
 │   │                          # cleansing_engine, deduplication_engine, error_explainer...
-│   ├── data/                  # Registro de sinónimos, reglas de limpieza, config, secuencias
-│   ├── views/                 # Vistas y menús
-│   ├── static/src/            # Componente JS/XML de vista previa
-│   ├── security/              # Grupos y permisos
-│   ├── migrations/            # Migraciones de datos
-│   └── tests/                 # Pruebas de Odoo y unitarias (pytest)
-├── pgm_osaka_loyalty/         # Puntos y vencimientos de lealtad (Osaka)
-├── pgm_extended_fields_osaka/ # Extensión de campos de tarjetas de lealtad
-├── pgm_wms_progress/          # Progreso y velocidad WMS (PDA)
-├── rules/                     # Reglas y guías de desarrollo Odoo
-├── sprint.md                  # Documentación del Sprint 0
-└── requirements.txt
-```
-
-> Los módulos `pgm_*` son módulos complementarios del repositorio; el núcleo del proyecto es `smart_data_importer`.
-
----
-
-## 5. Instalación
-
-1. Clonar el repositorio dentro de la ruta de *addons* de Odoo 19:
-   ```bash
-   git clone https://github.com/Eafit-Par-0/ODOO-PARSER-0-V3.git
-   ```
-2. Instalar las dependencias Python:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Agregar la carpeta al `addons_path` en `odoo.conf` y reiniciar Odoo.
-4. Activar el modo desarrollador → *Aplicaciones* → **Actualizar lista de aplicaciones**.
-5. Instalar **Importador Inteligente de Datos**.
-6. En *Ajustes* configurar el proveedor de IA, el modelo y la API key.
-
-> En **Odoo.sh** basta con subir el código al repositorio: `requirements.txt` instala las dependencias automáticamente.
-
----
-
-## 6. Equipo
-
-Samuel Echeverri · Sara Vasquez · Adyuer Ojeda · Tomás Gañán · Victor Infante · Samuel Serpa
+│   ├── data/                  # Synonym registry, cleansing rules, configuration, sequences
+│   ├── views/                 # Views and menus
+│   ├── static/src/            # Preview component (JS/XML)
+│   ├── security/              # Groups and permissions
+│   ├── migrations/            # Data migrations
+│   └── tests/                 # Odoo and unit tests (pytest)
+├──
 
 **Product Owner:** Jesús Alberto Pérez de la Hoz (Odoo)
 
